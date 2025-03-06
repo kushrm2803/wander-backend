@@ -19,6 +19,7 @@ const UserSchema = new mongoose.Schema(
     },
     photo: {
       type: String,
+      default: "https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg"
     },
     friends: [
       {

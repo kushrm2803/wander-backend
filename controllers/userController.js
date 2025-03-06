@@ -28,3 +28,25 @@ exports.addFriend = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+//PUT /api/users/profile-photo
+exports.updateProfilePhoto = async (req, res) => {
+  console.log("uploading profile photo");
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const imageUrl = req.file.path; // Cloudinary URL
+    const user = await User.findByIdAndUpdate(
+      req.user.userId, // Extracted from authMiddleware
+      { photo: imageUrl },
+      { new: true }
+    );
+
+    res.json({ message: "Profile picture updated", photo: user.photo });
+  } catch (err) {
+    console.error("Error updating profile picture:", err); // Log error
+    res.status(500).json({ error: "Server Error" }); // Send JSON, not object
+  }
+}

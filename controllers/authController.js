@@ -6,7 +6,7 @@ const sendEmail = require("../utils/sendEmail");
 // POST /api/auth/register
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, photo } = req.body;
+    const { name, email, password } = req.body;
     if (!name || !email || !password)
       return res
         .status(400)
@@ -25,7 +25,6 @@ exports.register = async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      photo,
     });
     await user.save();
 
