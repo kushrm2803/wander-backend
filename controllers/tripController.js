@@ -1,9 +1,11 @@
+const cloudinary = require("../config/cloudinary");
 const Trip = require("../models/Trip");
 const User = require("../models/User");
 
 // POST /api/trips
 exports.createTrip = async (req, res) => {
   try {
+    let { coverPhoto } = req.body;
     const {
       title,
       description,
@@ -15,9 +17,30 @@ exports.createTrip = async (req, res) => {
       tags,
       isPublic,
       status,
-      coverPhoto,
-      photos,
     } = req.body;
+
+    let photos = []; // Array to store Cloudinary image URLs
+
+    // If a cover photo file is uploaded, store it in Cloudinary
+    if (req.files["coverPhoto"]) {
+      const result = await cloudinary.uploader.upload(req.files["coverPhoto"][0].path, {
+        folder: "trip-covers",
+      });
+      coverPhoto = result.secure_url; // Store Cloudinary URL
+    }
+
+    // // Upload multiple photos and store URLs in an array
+    // if (req.files["tripPhotos"]) {
+    //   const uploadPromises = req.files["tripPhotos"].map(async (file) => {
+    //     const result = await cloudinary.uploader.upload(file.path, {
+    //       folder: "trip-photos",
+    //     });
+    //     return result.secure_url;
+    //   });
+
+    //   photos = await Promise.all(uploadPromises);
+    // }
+
     const trip = new Trip({
       title,
       description,
@@ -30,19 +53,22 @@ exports.createTrip = async (req, res) => {
       isPublic,
       status: status || "planning",
       coverPhoto,
-      photos,
+      // photos, // Updated with Cloudinary URLs
       host: req.user.userId,
       members: [{ user: req.user.userId, role: "host", status: "accepted" }],
     });
+
     await trip.save();
     await User.findByIdAndUpdate(req.user.userId, {
       $push: { tripHistory: trip._id },
     });
+
     res.status(201).json(trip);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // GET /api/trips/[TripID]
 exports.getTrip = async (req, res) => {
