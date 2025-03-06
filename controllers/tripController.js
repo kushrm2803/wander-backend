@@ -44,7 +44,7 @@ exports.createTrip = async (req, res) => {
   }
 };
 
-//GET /api/trips/[TripID]
+// GET /api/trips/[TripID]
 exports.getTrip = async (req, res) => {
   try {
     const trip = await Trip.findById(req.params.id)
@@ -65,7 +65,7 @@ const hasEditAccess = (trip, userId) => {
   return member && member.role === "editor";
 };
 
-//PUT /api/trips/[TripID]
+// PUT /api/trips/[TripID]
 exports.updateTrip = async (req, res) => {
   try {
     const trip = await Trip.findById(req.params.id);
@@ -108,7 +108,7 @@ exports.updateTrip = async (req, res) => {
   }
 };
 
-//DELETE /api/trips/[TripID]  (only host can delele trip)
+// DELETE /api/trips/[TripID]  (only host can delete trip)
 exports.deleteTrip = async (req, res) => {
   try {
     const trip = await Trip.findById(req.params.id);
@@ -125,7 +125,7 @@ exports.deleteTrip = async (req, res) => {
   }
 };
 
-//POST /api/trips/[TripID]/copy
+// POST /api/trips/[TripID]/copy
 exports.copyTrip = async (req, res) => {
   try {
     const originalTrip = await Trip.findById(req.params.id);
@@ -156,7 +156,7 @@ exports.copyTrip = async (req, res) => {
   }
 };
 
-//POST /api/trips/[TripID]/invite
+// POST /api/trips/[TripID]/invite
 exports.inviteMember = async (req, res) => {
   try {
     const { memberId } = req.body;
@@ -180,7 +180,7 @@ exports.inviteMember = async (req, res) => {
   }
 };
 
-//POST /api/trips/[TripID]/respond
+// POST /api/trips/[TripID]/respond
 exports.respondToInvitation = async (req, res) => {
   try {
     const { action } = req.body; //"accept" or "reject"
@@ -216,7 +216,7 @@ exports.respondToInvitation = async (req, res) => {
   }
 };
 
-//POST /api/trips/[TripID]/leave  (host cannot leave trip)
+// POST /api/trips/[TripID]/leave  (host cannot leave trip)
 exports.leaveTrip = async (req, res) => {
   try {
     const trip = await Trip.findById(req.params.id);
@@ -243,34 +243,83 @@ exports.leaveTrip = async (req, res) => {
   }
 };
 
-//GET /api/trips?query={query which is search}&tags={tag which is applied} (based on search parameters)
-exports.searchTrips = async (req, res) => {
+// GET /api/trips/open
+exports.getOpenTrips = async (req, res) => {
   try {
-    const { query, tags } = req.query;
-    let searchCriteria = {};
-    if (!req.user) {
-      searchCriteria.isPublic = true;
-    } else {
-      searchCriteria.$or = [
-        { isPublic: true },
-        { "members.user": req.user.userId, "members.status": "accepted" },
-      ];
-    }
-    if (query) {
-      searchCriteria.$or.push(
-        { title: { $regex: query, $options: "i" } },
-        { description: { $regex: query, $options: "i" } },
-        { "metadata.destination": { $regex: query, $options: "i" } }
-      );
-    }
-    if (tags) {
-      const tagsArray = tags.split(",");
-      searchCriteria.tags = { $in: tagsArray };
-    }
-    const trips = await Trip.find(searchCriteria)
+    const openTrips = await Trip.find({ isPublic: true })
       .populate("host")
       .populate("members.user");
-    res.json(trips);
+    res.json(openTrips);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+//POST /api/trips/[TripID]/join  (for open trips)
+exports.joinTrip = async (req, res) => {
+  try {
+    const trip = await Trip.findById(req.params.id);
+    if (!trip) return res.status(404).json({ message: "Trip not found" });
+    if (!trip.isPublic) {
+      return res
+        .status(403)
+        .json({ message: "This trip is private; you must be invited." });
+    }
+    if (trip.members.some((m) => m.user.toString() === req.user.userId)) {
+      return res
+        .status(400)
+        .json({ message: "You are already a member of this trip" });
+    }
+    trip.members.push({
+      user: req.user.userId,
+      role: "viewer",
+      status: "accepted",
+    });
+    await trip.save();
+    await User.findByIdAndUpdate(req.user.userId, {
+      $push: { tripHistory: trip._id },
+    });
+    res.json({ message: "You have joined the trip successfully", trip });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// POST /api/trips/:id/change-role
+exports.changeMemberRole = async (req, res) => {
+  try {
+    const { memberId, newRole } = req.body;
+    const trip = await Trip.findById(req.params.id);
+
+    if (!trip) return res.status(404).json({ message: "Trip not found" });
+
+    if (trip.host.toString() !== req.user.userId) {
+      return res
+        .status(403)
+        .json({ message: "Only the host can change member roles" });
+    }
+
+    const member = trip.members.find((m) => m.user.toString() === memberId);
+    if (!member) {
+      return res.status(404).json({ message: "Member not found in this trip" });
+    }
+
+    if (member.user.toString() === trip.host.toString()) {
+      return res
+        .status(400)
+        .json({ message: "The host's role cannot be changed" });
+    }
+
+    if (!["viewer", "editor"].includes(newRole)) {
+      return res
+        .status(400)
+        .json({ message: "Invalid role. Use 'viewer' or 'editor'" });
+    }
+
+    member.role = newRole;
+    await trip.save();
+
+    res.json({ message: `Member role updated to ${newRole}`, trip });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

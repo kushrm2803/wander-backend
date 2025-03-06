@@ -3,6 +3,7 @@ const router = express.Router();
 const blogController = require("../controllers/blogController");
 const authMiddleware = require("../middleware/authMiddleware");
 
+router.get("/search", authMiddleware, blogController.searchBlogs);
 //POST api/blogs
 router.post("/", authMiddleware, blogController.createBlogPost);
 //GET api/blogs
@@ -17,5 +18,6 @@ router.delete("/:id", authMiddleware, blogController.deleteBlogPost);
 router.post("/:id/rate", authMiddleware, blogController.rateBlog);
 //PUT api/blogs/[id]/rate
 router.put("/:id/rate", authMiddleware, blogController.updateRating);
+
 
 module.exports = router;

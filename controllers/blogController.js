@@ -148,7 +148,6 @@ exports.updateRating = async (req, res) => {
     if (!blogPost)
       return res.status(404).json({ message: "Blog post not found" });
 
-    // Find the existing rating by this user
     const ratingIndex = blogPost.ratings.findIndex(
       rating => rating.user.toString() === req.user.userId
     );
@@ -158,6 +157,56 @@ exports.updateRating = async (req, res) => {
     blogPost.ratings[ratingIndex].value = value;
     await blogPost.save();
     res.json({ message: "Rating updated successfully", blogPost });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// GET /api/blogs/search?query=...&tags=...
+exports.searchBlogs = async (req, res) => {
+  try {
+    const { query, tags } = req.query;
+    // Build the $match criteria for the aggregation pipeline.
+    // We'll use "tripData.tags" because after $lookup, the Trip document is stored in tripData.
+    let matchCriteria = {};
+    let orConditions = [];
+
+    // If a textual query is provided, search in blog caption and content.
+    if (query) {
+      orConditions.push(
+        { caption: { $regex: query, $options: "i" } },
+        { content: { $regex: query, $options: "i" } }
+      );
+    }
+
+    // If tags are provided, split them into an array and add a condition on tripData.tags.
+    if (tags) {
+      const tagsArray = tags.split(",").map((tag) => tag.trim());
+      orConditions.push({ "tripData.tags": { $in: tagsArray } });
+    }
+
+    // If we have any OR conditions, set matchCriteria accordingly.
+    if (orConditions.length > 0) {
+      matchCriteria.$or = orConditions;
+    }
+
+    // Build the aggregation pipeline:
+    const blogs = await BlogPost.aggregate([
+      {
+        // Lookup to join each blog with its associated Trip document.
+        $lookup: {
+          from: "trips",           // collection name in MongoDB (usually lower-case plural)
+          localField: "trip",
+          foreignField: "_id",
+          as: "tripData"
+        }
+      },
+      { $unwind: "$tripData" },
+      // Apply our match criteria to filter by blog fields or the associated Trip's tags.
+      { $match: matchCriteria }
+    ]);
+
+    res.json(blogs);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
