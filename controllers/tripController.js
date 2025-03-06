@@ -1,6 +1,7 @@
 const cloudinary = require("../config/cloudinary");
 const Trip = require("../models/Trip");
 const User = require("../models/User");
+const Notification = require("../models/Notifications")
 
 // POST /api/trips
 exports.createTrip = async (req, res) => {
@@ -188,23 +189,32 @@ exports.inviteMember = async (req, res) => {
     const { memberId } = req.body;
     const trip = await Trip.findById(req.params.id);
     if (!trip) return res.status(404).json({ message: "Trip not found" });
+
     if (trip.host.toString() !== req.user.userId) {
-      return res
-        .status(403)
-        .json({ message: "Only the host can invite members" });
+      return res.status(403).json({ message: "Only the host can invite members" });
     }
+
     if (trip.members.some((m) => m.user.toString() === memberId)) {
-      return res
-        .status(400)
-        .json({ message: "User already invited or a member" });
+      return res.status(400).json({ message: "User already invited or a member" });
     }
+
+    // Add member with pending status
     trip.members.push({ user: memberId, role: "viewer", status: "pending" });
     await trip.save();
-    res.json({ message: "Invitation sent" });
+
+    // Create a notification for the invited user
+    await Notification.create({
+      userId: memberId, // User who gets the notification
+      tripId: trip._id, // Trip for which they were invited
+      message: `You have been invited to join the trip: ${trip.title}`, // Custom message
+    });
+
+    res.json({ message: "Invitation sent and notification created" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // POST /api/trips/[TripID]/respond
 exports.respondToInvitation = async (req, res) => {

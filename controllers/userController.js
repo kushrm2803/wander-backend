@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const Notification = require("../models/Notifications")
 
 //GET /api/users/profile
 exports.getProfile = async (req, res) => {
@@ -50,3 +51,13 @@ exports.updateProfilePhoto = async (req, res) => {
     res.status(500).json({ error: "Server Error" }); // Send JSON, not object
   }
 }
+
+//GET /api/users/get-notifications
+exports.getNotifications = async (req, res) => {
+  try {
+    const notifications = await Notification.find({ userId: req.user.userId }).sort({ createdAt: -1 });
+    res.json(notifications);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
