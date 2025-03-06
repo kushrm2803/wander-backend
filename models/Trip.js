@@ -12,7 +12,7 @@ const DayPlanSchema = new mongoose.Schema({
       expense: { type: Number },
     },
   ],
-  // Lodging details
+  // Lodging details 
   stay: {
     hotelName: { type: String },
     address: { type: String },
@@ -27,7 +27,7 @@ const DayPlanSchema = new mongoose.Schema({
       address: { type: String },
       description: { type: String },
       cost: { type: Number },
-      mealType: { type: String },
+      mealType: { type: String }, // breakfast, lunch, dinner
     },
   ],
   // Other activities
@@ -45,12 +45,12 @@ const MemberSchema = new mongoose.Schema({
   role: {
     type: String,
     enum: ["host", "editor", "viewer"],
-    default: "viewer",
+    default: "viewer"
   },
   status: {
     type: String,
     enum: ["accepted", "pending", "rejected"],
-    default: "pending",
+    default: "pending"
   },
 });
 
@@ -61,11 +61,12 @@ const TripSchema = new mongoose.Schema(
     metadata: {
       destination: { type: String },
       cost: { type: Number },
-      duration: { type: Number }, // e.g., number of days
+      duration: { type: Number } // e.g., number of days
     },
     itinerary: [DayPlanSchema],
     packingEssentials: [String],
     estimatedBudget: { type: Number },
+    actualBudget: { type: Number },
     tags: [String],
     host: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     members: [MemberSchema],
@@ -73,15 +74,15 @@ const TripSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ["planning", "planned", "ongoing", "completed", "posted"],
-      default: "planning",
+      default: "planning"
     },
     coverPhoto: { type: String },
     photos: [
       {
         url: { type: String },
-        caption: { type: String },
-      },
-    ],
+        caption: { type: String }
+      }
+    ]
   },
   { timestamps: true }
 );

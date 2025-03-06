@@ -2,7 +2,12 @@ const mongoose = require("mongoose");
 
 const PhotoSchema = new mongoose.Schema({
   url: { type: String, required: true },
-  caption: { type: String },
+  caption: { type: String }
+});
+
+const RatingSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  value: { type: Number, required: true, min: 1, max: 5 }
 });
 
 const BlogPostSchema = new mongoose.Schema(
@@ -11,7 +16,8 @@ const BlogPostSchema = new mongoose.Schema(
     host: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     caption: { type: String },
     photos: [PhotoSchema],
-    content: { type: String }, // optional detailed blog content
+    content: { type: String },
+    ratings: [RatingSchema]
   },
   { timestamps: true }
 );

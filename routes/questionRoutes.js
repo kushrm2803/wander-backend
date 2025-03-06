@@ -3,11 +3,11 @@ const router = express.Router();
 const questionController = require("../controllers/questionController");
 const authMiddleware = require("../middleware/authMiddleware");
 
-// Ask a question about a blog post
+//POST /api/questions/ask
 router.post("/ask", authMiddleware, questionController.askQuestion);
-// Answer a question
+//POST /api/questions/[id]/answer
 router.post("/:questionId/answer", authMiddleware, questionController.answerQuestion);
-// Get all questions for a blog post
+//GET /api/questions/blog/[id]
 router.get("/blog/:blogId", questionController.getQuestions);
 
 module.exports = router;

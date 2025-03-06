@@ -3,10 +3,19 @@ const router = express.Router();
 const blogController = require("../controllers/blogController");
 const authMiddleware = require("../middleware/authMiddleware");
 
-// Create a new blog post
+//POST api/blogs
 router.post("/", authMiddleware, blogController.createBlogPost);
-
-// Get all blog posts
+//GET api/blogs
 router.get("/", blogController.getBlogPosts);
+//GET api/blogs/[id]
+router.get("/:id", blogController.getBlogPostById);
+//PUT api/blogs/[id]
+router.put("/:id", authMiddleware, blogController.updateBlogPost);
+//DELETE api/blogs/[id]
+router.delete("/:id", authMiddleware, blogController.deleteBlogPost);
+//POST api/blogs/[id]/rate
+router.post("/:id/rate", authMiddleware, blogController.rateBlog);
+//PUT api/blogs/[id]/rate
+router.put("/:id/rate", authMiddleware, blogController.updateRating);
 
 module.exports = router;
