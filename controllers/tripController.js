@@ -11,13 +11,13 @@ exports.createTrip = async (req, res) => {
       itinerary,
       packingEssentials,
       estimatedBudget,
+      actualBudget,
       tags,
       isPublic,
       status,
       coverPhoto,
       photos,
     } = req.body;
-
     const trip = new Trip({
       title,
       description,
@@ -25,6 +25,7 @@ exports.createTrip = async (req, res) => {
       itinerary,
       packingEssentials,
       estimatedBudget,
+      actualBudget,
       tags,
       isPublic,
       status: status || "planning",
@@ -81,19 +82,20 @@ exports.updateTrip = async (req, res) => {
       itinerary,
       packingEssentials,
       estimatedBudget,
+      actualBudget,
       tags,
       isPublic,
       status,
       coverPhoto,
       photos,
     } = req.body;
-
     if (title) trip.title = title;
     if (description) trip.description = description;
     if (metadata) trip.metadata = metadata;
     if (itinerary) trip.itinerary = itinerary;
     if (packingEssentials) trip.packingEssentials = packingEssentials;
     if (estimatedBudget) trip.estimatedBudget = estimatedBudget;
+    if (actualBudget !== undefined) trip.actualBudget = actualBudget;
     if (tags) trip.tags = tags;
     if (isPublic !== undefined) trip.isPublic = isPublic;
     if (status) trip.status = status;

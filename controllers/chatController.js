@@ -1,23 +1,51 @@
+// controllers/chatController.js
 const ChatRoom = require("../models/ChatRoom");
+const Trip = require("../models/Trip");
 
+//GET /api/chat/trip/[id]
 exports.getChatRoom = async (req, res) => {
   try {
     const { tripId } = req.params;
+
+    const trip = await Trip.findById(tripId);
+    if (!trip) {
+      return res.status(404).json({ message: "Trip not found" });
+    }
+
+    const acceptedMembers = trip.members
+      .filter((member) => member.status === "accepted")
+      .map((member) => member.user.toString());
+
     let chatRoom = await ChatRoom.findOne({ trip: tripId });
+
     if (!chatRoom) {
       chatRoom = new ChatRoom({
         trip: tripId,
-        participants: [req.user.userId],
+        participants: acceptedMembers,
         messages: [],
       });
       await chatRoom.save();
+    } else {
+      let updated = false;
+      acceptedMembers.forEach((memberId) => {
+        const participantIds = chatRoom.participants.map((p) => p.toString());
+        if (!participantIds.includes(memberId)) {
+          chatRoom.participants.push(memberId);
+          updated = true;
+        }
+      });
+      if (updated) {
+        await chatRoom.save();
+      }
     }
+
     res.json(chatRoom);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
+//POST /api/chat/trip/[id]/message
 exports.postMessage = async (req, res) => {
   try {
     const { tripId } = req.params;
@@ -32,7 +60,8 @@ exports.postMessage = async (req, res) => {
     }
     const message = { sender: req.user.userId, content };
     chatRoom.messages.push(message);
-    if (!chatRoom.participants.includes(req.user.userId)) {
+    const participantIds = chatRoom.participants.map((p) => p.toString());
+    if (!participantIds.includes(req.user.userId)) {
       chatRoom.participants.push(req.user.userId);
     }
     await chatRoom.save();
@@ -42,12 +71,16 @@ exports.postMessage = async (req, res) => {
   }
 };
 
+//GET /api/chat/trip/[id]/all-messages
 exports.getMessages = async (req, res) => {
   try {
     const { tripId } = req.params;
-    const chatRoom = await ChatRoom.findOne({ trip: tripId })
-      .populate("messages.sender", "name email");
-    if (!chatRoom) return res.status(404).json({ message: "Chat room not found" });
+    const chatRoom = await ChatRoom.findOne({ trip: tripId }).populate(
+      "messages.sender",
+      "name email"
+    );
+    if (!chatRoom)
+      return res.status(404).json({ message: "Chat room not found" });
     res.json(chatRoom.messages);
   } catch (err) {
     res.status(500).json({ error: err.message });

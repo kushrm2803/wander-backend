@@ -1,5 +1,6 @@
 const Question = require("../models/Questions");
 
+//POST /api/questions/ask (blogid passed in body)
 exports.askQuestion = async (req, res) => {
   try {
     const { blogId, questionText } = req.body;
@@ -16,6 +17,7 @@ exports.askQuestion = async (req, res) => {
   }
 };
 
+//POST /api/questions/[id]/answer
 exports.answerQuestion = async (req, res) => {
   try {
     const { questionId } = req.params;
@@ -33,6 +35,7 @@ exports.answerQuestion = async (req, res) => {
   }
 };
 
+//GET /api/questions/blog/[id]
 exports.getQuestions = async (req, res) => {
   try {
     const { blogId } = req.params;
