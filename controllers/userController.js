@@ -61,3 +61,16 @@ exports.getNotifications = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+//GET /api/users/seach/qurey=name
+exports.searchUser = async(req , res) => {
+  try {
+    const { name } = req.query;
+    if (!name) return res.status(400).json({ message: "Name is required" });
+
+    const users = await User.find({ name: { $regex: name, $options: "i" } }); // Case-insensitive search
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: "Server Error" });
+  }
+}
