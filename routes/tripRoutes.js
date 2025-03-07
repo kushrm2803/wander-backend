@@ -5,6 +5,8 @@ const authMiddleware = require("../middleware/authMiddleware");
 
 // GET /api/trips/open
 router.get("/open", authMiddleware, tripController.getOpenTrips);
+// POST /api/trips/my-trips
+router.post("/my-trips", authMiddleware, tripController.getAcceptedTripsForUser);
 // POST /api/trips
 router.post("/", authMiddleware, tripController.createTrip);
 // GET /api/trips/[TripID]
