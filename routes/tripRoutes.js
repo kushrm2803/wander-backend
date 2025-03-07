@@ -2,13 +2,17 @@ const express = require("express");
 const router = express.Router();
 const tripController = require("../controllers/tripController");
 const authMiddleware = require("../middleware/authMiddleware");
+const upload = require("../middleware/upload");
 
 // GET /api/trips/open
 router.get("/open", authMiddleware, tripController.getOpenTrips);
 // POST /api/trips/my-trips
 router.post("/my-trips", authMiddleware, tripController.getAcceptedTripsForUser);
 // POST /api/trips
-router.post("/", authMiddleware, tripController.createTrip);
+router.post("/", authMiddleware, upload.fields([
+  { name: "coverPhoto", maxCount: 1 }, // Accept only one cover photo
+  { name: "tripPhotos", maxCount: 15 }, // Accept up to 10 photos
+]), tripController.createTrip);
 // GET /api/trips/[TripID]
 router.get("/:id", authMiddleware, tripController.getTrip);
 // PUT /api/trips/[TripID]

@@ -1,16 +1,23 @@
-const multer = require('multer');
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
-const cloudinary = require('../config/cloudinary');
+const multer = require("multer");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const cloudinary = require("../config/cloudinary");
 
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  params: {
-    folder: "profile-photos", // Folder name in Cloudinary
-    format: async (req, file) => "jpg", // Convert to JPG
-    public_id: (req, file) => `user-${req.user.userId}-${Date.now()}`
+  params: async (req, file) => {
+    let folderName = "uploads"; // Default folder
+    if (file.fieldname === "coverPhoto") folderName = "trip-covers";
+    if (file.fieldname === "tripPhotos") folderName = "trip-photos";
+    if (file.fieldname === "photo") folderName = "profile-photos";
+
+    return {
+      folder: folderName,
+      format: "jpg",
+      public_id: `user-${req.user.userId}-${Date.now()}`
+    };
   }
 });
 
-const upload = multer({ storage });
+const upload = multer({ storage, limits: {filesize: 5*1024*1024} });
 
 module.exports = upload;

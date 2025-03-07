@@ -1,9 +1,33 @@
+const cloudinary = require("../config/cloudinary");
 const Trip = require("../models/Trip");
 const User = require("../models/User");
+const Notification = require("../models/Notifications")
 
 // POST /api/trips
 exports.createTrip = async (req, res) => {
   try {
+    // If the fields come in as JSON strings, parse them
+    if (typeof req.body.metadata === 'string') {
+      req.body.metadata = JSON.parse(req.body.metadata);
+    }
+    if (typeof req.body.itinerary === 'string') {
+      req.body.itinerary = JSON.parse(req.body.itinerary);
+    }
+    if (typeof req.body.packingEssentials === 'string') {
+      req.body.packingEssentials = JSON.parse(req.body.packingEssentials);
+    }
+    if (typeof req.body.tags === 'string') {
+      // Depending on how you send tags, you might want to split or parse
+      try {
+        req.body.tags = JSON.parse(req.body.tags);
+      } catch (e) {
+        // If parsing fails, treat it as a comma-separated string
+        req.body.tags = req.body.tags.split(",").map(t => t.trim());
+      }
+    }
+
+    // Extract coverPhoto from req.body (or leave it to be replaced below)
+    let { coverPhoto } = req.body;
     const {
       title,
       description,
@@ -15,9 +39,22 @@ exports.createTrip = async (req, res) => {
       tags,
       isPublic,
       status,
-      coverPhoto,
-      photos,
     } = req.body;
+
+    // Check that required fields are present (e.g. title)
+    if (!title) {
+      return res.status(400).json({ error: "Title is required" });
+    }
+
+    // Process coverPhoto file upload from FormData if available
+    if (req.files && req.files["coverPhoto"]) {
+      const result = await cloudinary.uploader.upload(req.files["coverPhoto"][0].path, {
+        folder: "trip-covers",
+      });
+      coverPhoto = result.secure_url; // Replace coverPhoto with the Cloudinary URL
+    }
+
+    // Create the Trip document
     const trip = new Trip({
       title,
       description,
@@ -30,19 +67,22 @@ exports.createTrip = async (req, res) => {
       isPublic,
       status: status || "planning",
       coverPhoto,
-      photos,
       host: req.user.userId,
       members: [{ user: req.user.userId, role: "host", status: "accepted" }],
     });
+
     await trip.save();
+
     await User.findByIdAndUpdate(req.user.userId, {
       $push: { tripHistory: trip._id },
     });
+
     res.status(201).json(trip);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // GET /api/trips/[TripID]
 exports.getTrip = async (req, res) => {
@@ -162,23 +202,32 @@ exports.inviteMember = async (req, res) => {
     const { memberId } = req.body;
     const trip = await Trip.findById(req.params.id);
     if (!trip) return res.status(404).json({ message: "Trip not found" });
+
     if (trip.host.toString() !== req.user.userId) {
-      return res
-        .status(403)
-        .json({ message: "Only the host can invite members" });
+      return res.status(403).json({ message: "Only the host can invite members" });
     }
+
     if (trip.members.some((m) => m.user.toString() === memberId)) {
-      return res
-        .status(400)
-        .json({ message: "User already invited or a member" });
+      return res.status(400).json({ message: "User already invited or a member" });
     }
+
+    // Add member with pending status
     trip.members.push({ user: memberId, role: "viewer", status: "pending" });
     await trip.save();
-    res.json({ message: "Invitation sent" });
+
+    // Create a notification for the invited user
+    await Notification.create({
+      userId: memberId, // User who gets the notification
+      tripId: trip._id, // Trip for which they were invited
+      message: `You have been invited to join the trip: ${trip.title}`, // Custom message
+    });
+
+    res.json({ message: "Invitation sent and notification created" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // POST /api/trips/[TripID]/respond
 exports.respondToInvitation = async (req, res) => {
