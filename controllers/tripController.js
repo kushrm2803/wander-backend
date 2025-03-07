@@ -373,3 +373,22 @@ exports.changeMemberRole = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// POST /api/trips/my-trips
+exports.getAcceptedTripsForUser = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required in the request body" });
+    }
+    // Find trips where the members array contains an entry for userId with status "accepted"
+    const trips = await Trip.find({
+      members: { $elemMatch: { user: userId, status: "accepted" } }
+    })
+      .populate("host")
+      .populate("members.user");
+    res.json(trips);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
