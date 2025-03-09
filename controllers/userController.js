@@ -62,15 +62,45 @@ exports.getNotifications = async (req, res) => {
   }
 };
 
-//GET /api/users/seach/qurey=name
-exports.searchUser = async(req , res) => {
-  try {
-    const { name } = req.query;
-    if (!name) return res.status(400).json({ message: "Name is required" });
+// //GET /api/users/seach/qurey=name
+// exports.searchUser = async(req , res) => {
+//   try {
+//     const { name } = req.query;
+//     if (!name) return res.status(400).json({ message: "Name is required" });
 
-    const users = await User.find({ name: { $regex: name, $options: "i" } }); // Case-insensitive search
+//     const users = await User.find({ name: { $regex: name, $options: "i" } }); // Case-insensitive search
+//     res.json(users);
+//   } catch (err) {
+//     res.status(500).json({ error: "Server Error" });
+//   }
+// }
+
+// GET /api/users/search?query=...
+exports.searchUser = async(req, res) => {
+  try {
+    const { query } = req.query;
+    if (!query) {
+      return res.status(400).json({ message: "Search query is required" });
+    }
+
+    // Search by name or email, exclude current user
+    const users = await User.find({
+      $and: [
+        { _id: { $ne: req.user.userId } }, // Exclude current user
+        {
+          $or: [
+            { name: { $regex: query, $options: "i" } },
+            { email: { $regex: query, $options: "i" } }
+          ]
+        }
+      ]
+    })
+    .select('_id name email photo') // Only return necessary fields
+    .limit(20); // Limit results
+
     res.json(users);
   } catch (err) {
+    console.error('Search error:', err);
     res.status(500).json({ error: "Server Error" });
   }
-}
+};
