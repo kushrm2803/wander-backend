@@ -405,3 +405,58 @@ exports.getAcceptedTripsForUser = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+//PUT /api/trips/[TripID]/remove-cover
+exports.removeCoverPhoto = async (req, res) => {
+  console.log("Removing cover photo");
+  try {
+    const defaultCoverPhoto =
+      "https://media.istockphoto.com/id/1381637603/photo/mountain-landscape.jpg?s=612x612&w=0&k=20&c=w64j3fW8C96CfYo3kbi386rs_sHH_6BGe8lAAAFS-y4="; // Default cover photo URL
+
+    const trip = await Trip.findByIdAndUpdate(
+      req.params.tripId, // Trip ID from URL params
+      { coverPhoto: defaultCoverPhoto },
+      { new: true }
+    );
+
+    if (!trip) {
+      return res.status(404).json({ error: "Trip not found" });
+    }
+
+    res.json({ message: "Cover photo removed", coverPhoto: trip.coverPhoto });
+  } catch (err) {
+    console.error("Error removing cover photo:", err);
+    res.status(500).json({ error: "Server Error" });
+  }
+};
+
+//PUT /api/trips/[TripID]/update-cover
+exports.updateCoverPhoto = async (req, res) => {
+  console.log("Updating cover photo");
+
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    // Upload new cover photo to Cloudinary
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: "trip-covers",
+    });
+
+    const trip = await Trip.findByIdAndUpdate(
+      req.params.tripId, // Trip ID from URL params
+      { coverPhoto: result.secure_url }, // Set new Cloudinary URL
+      { new: true }
+    );
+
+    if (!trip) {
+      return res.status(404).json({ error: "Trip not found" });
+    }
+
+    res.json({ message: "Cover photo updated", coverPhoto: trip.coverPhoto });
+  } catch (err) {
+    console.error("Error updating cover photo:", err);
+    res.status(500).json({ error: "Server Error" });
+  }
+};

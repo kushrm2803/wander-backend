@@ -13,8 +13,8 @@ router.post("/", authMiddleware, upload.fields([
   { name: "coverPhoto", maxCount: 1 }, // Accept only one cover photo
   { name: "tripPhotos", maxCount: 15 }, // Accept up to 10 photos
 ]), tripController.createTrip);
-//PUT removeCoverPhoto
-// router.put("/:tripId/remove-cover", authMiddleware, tripController.removeCoverPhoto);
+//PUT /api/trips/[TripID]/remove-cover
+router.put("/:tripId/remove-cover", authMiddleware, tripController.removeCoverPhoto);
 // GET /api/trips/[TripID]
 router.get("/:id", authMiddleware, tripController.getTrip);
 // PUT /api/trips/[TripID]
@@ -37,5 +37,11 @@ router.post(
   authMiddleware,
   tripController.changeMemberRole
 );
-
+//PUT /api/trips/[TripID]/update-cover
+router.put(
+  "/:tripId/update-cover",
+  authMiddleware,
+  upload.single("coverPhoto"), // Accept a single file upload
+  tripController.updateCoverPhoto
+);
 module.exports = router;
