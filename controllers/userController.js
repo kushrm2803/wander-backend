@@ -104,3 +104,21 @@ exports.searchUser = async(req, res) => {
     res.status(500).json({ error: "Server Error" });
   }
 };
+
+//PUT /api/users/profile-photo/remove
+exports.removeProfilePhoto = async (req, res) => {
+  try {
+    const defaultPhoto = "https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg"; // Default profile picture URL
+
+    const user = await User.findByIdAndUpdate(
+      req.user.userId, // Extracted from authMiddleware
+      { photo: defaultPhoto },
+      { new: true }
+    );
+
+    res.json({ message: "Profile picture reset to default", photo: user.photo });
+  } catch (err) {
+    console.error("Error resetting profile picture:", err);
+    res.status(500).json({ error: "Server Error" });
+  }
+};

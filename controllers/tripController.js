@@ -6,27 +6,25 @@ const Notification = require("../models/Notifications")
 // POST /api/trips
 exports.createTrip = async (req, res) => {
   try {
-    // If the fields come in as JSON strings, parse them
-    if (typeof req.body.metadata === 'string') {
+    // Parse stringified JSON fields if necessary
+    if (typeof req.body.metadata === "string") {
       req.body.metadata = JSON.parse(req.body.metadata);
     }
-    if (typeof req.body.itinerary === 'string') {
+    if (typeof req.body.itinerary === "string") {
       req.body.itinerary = JSON.parse(req.body.itinerary);
     }
-    if (typeof req.body.packingEssentials === 'string') {
+    if (typeof req.body.packingEssentials === "string") {
       req.body.packingEssentials = JSON.parse(req.body.packingEssentials);
     }
-    if (typeof req.body.tags === 'string') {
-      // Depending on how you send tags, you might want to split or parse
+    if (typeof req.body.tags === "string") {
       try {
         req.body.tags = JSON.parse(req.body.tags);
       } catch (e) {
-        // If parsing fails, treat it as a comma-separated string
-        req.body.tags = req.body.tags.split(",").map(t => t.trim());
+        req.body.tags = req.body.tags.split(",").map((t) => t.trim());
       }
     }
 
-    // Extract coverPhoto from req.body (or leave it to be replaced below)
+    // Extract fields from request
     let { coverPhoto } = req.body;
     const {
       title,
@@ -41,20 +39,32 @@ exports.createTrip = async (req, res) => {
       status,
     } = req.body;
 
-    // Check that required fields are present (e.g. title)
     if (!title) {
       return res.status(400).json({ error: "Title is required" });
     }
 
-    // Process coverPhoto file upload from FormData if available
-    if (req.files && req.files["coverPhoto"]) {
-      const result = await cloudinary.uploader.upload(req.files["coverPhoto"][0].path, {
+    // Upload coverPhoto if provided
+    if (req.files?.coverPhoto) {
+      const result = await cloudinary.uploader.upload(req.files.coverPhoto[0].path, {
         folder: "trip-covers",
       });
-      coverPhoto = result.secure_url; // Replace coverPhoto with the Cloudinary URL
+      coverPhoto = result.secure_url;
     }
 
-    // Create the Trip document
+    // Upload multiple tripPhotos
+    let tripPhotos = [];
+    if (req.files?.tripPhotos) {
+      const uploadPromises = req.files.tripPhotos.map(async (file) => {
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: "trip-photos",
+        });
+        return { url: result.secure_url, caption: file.originalname || "" };
+      });
+
+      tripPhotos = await Promise.all(uploadPromises);
+    }
+
+    // Create trip document
     const trip = new Trip({
       title,
       description,
@@ -67,12 +77,14 @@ exports.createTrip = async (req, res) => {
       isPublic,
       status: status || "planning",
       coverPhoto,
+      tripPhotos,
       host: req.user.userId,
       members: [{ user: req.user.userId, role: "host", status: "accepted" }],
     });
 
     await trip.save();
 
+    // Update user's trip history
     await User.findByIdAndUpdate(req.user.userId, {
       $push: { tripHistory: trip._id },
     });
@@ -82,6 +94,7 @@ exports.createTrip = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 
 // GET /api/trips/[TripID]
