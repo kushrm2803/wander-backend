@@ -94,7 +94,7 @@ exports.getBlogPosts = async (req, res) => {
   try {
     const blogPosts = await BlogPost.find()
       .populate("trip")
-      .populate("host", "name email")
+      .populate("host", "name email photo")
       .populate("ratings.user", "name email");
     res.json(blogPosts);
   } catch (err) {
