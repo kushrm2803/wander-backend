@@ -51,18 +51,24 @@ exports.createTrip = async (req, res) => {
       coverPhoto = result.secure_url;
     }
 
-    // Upload multiple tripPhotos
-    let tripPhotos = [];
-    if (req.files?.tripPhotos) {
-      const uploadPromises = req.files.tripPhotos.map(async (file) => {
-        const result = await cloudinary.uploader.upload(file.path, {
-          folder: "trip-photos",
-        });
-        return { url: result.secure_url, caption: file.originalname || "" };
-      });
+// Upload multiple tripPhotos
+let tripPhotos = [];
+if (req.files?.tripPhotos) {
+  const captions = req.body.photosCaptions; // Extract captions from request body
 
-      tripPhotos = await Promise.all(uploadPromises);
-    }
+  const uploadPromises = req.files.tripPhotos.map(async (file, index) => {
+    const result = await cloudinary.uploader.upload(file.path, {
+      folder: "trip-photos",
+    });
+
+    return { 
+      url: result.secure_url, 
+      caption: Array.isArray(captions) ? captions[index] || "" : captions || "" // Handle both single and multiple captions
+    };
+  });
+
+  tripPhotos = await Promise.all(uploadPromises);
+}
 
     // Create trip document
     const trip = new Trip({
