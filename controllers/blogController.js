@@ -1,3 +1,4 @@
+const cloudinary = require("../config/cloudinary");
 const BlogPost = require("../models/BlogPost");
 const User = require("../models/User");
 const Trip = require("../models/Trip");
@@ -5,26 +6,59 @@ const Trip = require("../models/Trip");
 // POST /api/blogs
 exports.createBlogPost = async (req, res) => {
   try {
+    // Extract fields from request
+    let { blogCoverPhoto } = req.body;
+    // console.log(req.body);
     const {
-      tripId, // Optional
+      tripId,
       title,
       summary,
       description,
       recommendations,
       advisory,
-      coverPhoto,
-      photos,
       contactInfo,
       tags,
       budget,
       concerns,
     } = req.body;
+    
+    if(!title){
+      return res.status(400).json({error: "Title is required", title, summary});
+    }
 
     if (tripId) {
       const trip = await Trip.findById(tripId);
       if (!trip) return res.status(404).json({ message: "Trip not found" });
     }
 
+    // Upload cover photo if provided
+    if (req.files?.blogCoverPhoto) {
+      const result = await cloudinary.uploader.upload(req.files.blogCoverPhoto[0].path, {
+        folder: "blog-covers",
+      });
+      blogCoverPhoto = result.secure_url;
+    }
+
+    // Upload multiple blog photos
+    let blogPhotos = [];
+    if (req.files?.blogPhotos) {
+      const captions = req.body.photosCaptions; // Extract captions from request body
+
+      const uploadPromises = req.files.blogPhotos.map(async (file, index) => {
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: "blog-photos",
+        });
+
+        return { 
+          url: result.secure_url, 
+          caption: Array.isArray(captions) ? captions[index] || "" : captions || "" // Handle single & multiple captions
+        };
+      });
+
+      blogPhotos = await Promise.all(uploadPromises);
+    }
+
+    // Create blog post document
     const blogPost = new BlogPost({
       trip: tripId || null,
       host: req.user.userId,
@@ -33,8 +67,8 @@ exports.createBlogPost = async (req, res) => {
       description,
       recommendations,
       advisory,
-      coverPhoto,
-      photos,
+      coverPhoto: blogCoverPhoto,
+      photos: blogPhotos,
       contactInfo,
       tags,
       budget,
@@ -42,6 +76,8 @@ exports.createBlogPost = async (req, res) => {
     });
 
     await blogPost.save();
+
+    // Update user's public posts
     await User.findByIdAndUpdate(req.user.userId, {
       $push: { publicPosts: blogPost._id },
     });
@@ -51,6 +87,7 @@ exports.createBlogPost = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // GET /api/blogs
 exports.getBlogPosts = async (req, res) => {

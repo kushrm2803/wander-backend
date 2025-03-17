@@ -2,10 +2,14 @@ const express = require("express");
 const router = express.Router();
 const blogController = require("../controllers/blogController");
 const authMiddleware = require("../middleware/authMiddleware");
+const upload = require("../middleware/upload");
 
 router.get("/search", authMiddleware, blogController.searchBlogs);
 //POST api/blogs
-router.post("/", authMiddleware, blogController.createBlogPost);
+router.post("/", authMiddleware, upload.fields([
+    { name: "blogCoverPhoto", maxCount: 1 }, // Accept only one cover photo
+    { name: "blogPhotos", maxCount: 15 }, // Accept up to 15 photos
+  ]), blogController.createBlogPost);
 //GET api/blogs
 router.get("/", blogController.getBlogPosts);
 //GET api/blogs/[id]
