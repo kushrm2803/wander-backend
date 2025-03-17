@@ -12,7 +12,7 @@ router.post("/add-friend", authMiddleware, addFriend);
 router.put("/profile-photo", authMiddleware, upload.single('photo'), updateProfilePhoto);
 //PUT /api/users/profile-photo/remove
 router.put("/profile-photo/remove", authMiddleware, removeProfilePhoto);
-//PUT /api/users/get-notification
+//GET /api/users/get-notification
 router.get("/get-notifications", authMiddleware, getNotifications);
 //GET /api/users/search?name=name
 router.get("/search", authMiddleware, searchUser);
