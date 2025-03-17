@@ -1,7 +1,19 @@
 const Trip = require("../models/Trip");
 const Notification = require("../models/Notifications");
 
-// POST /api/notifications/respondToInvitation
+//GET /api/notifications/unresponded
+exports.getUnrespondedInvites = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const notifications = await Notification.find({ userId, isRead: false });
+    res.json(notifications);
+  } catch (err) {
+    console.error("Error fetching notifications:", err);
+    res.status(500).json({ error: "Server Error" });
+  }
+};
+
+// POST /api/notifications/respond-to-invitation
 exports.respondToInvitation = async (req, res) => {
   try {
     const { notificationId, response } = req.body; // Accept or Reject
