@@ -107,7 +107,7 @@ exports.getBlogPostById = async (req, res) => {
   try {
     const blogPost = await BlogPost.findById(req.params.id)
       .populate("trip")
-      .populate("host", "name email")
+      .populate("host", "name email photo")
       .populate("ratings.user", "name email");
     if (!blogPost)
       return res.status(404).json({ message: "Blog post not found" });
