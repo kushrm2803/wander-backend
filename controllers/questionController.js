@@ -40,7 +40,7 @@ exports.getQuestions = async (req, res) => {
   try {
     const { blogId } = req.params;
     const questions = await Question.find({ blog: blogId })
-      .populate("askedBy", "name email")
+      .populate("askedBy", "name email photo")
       .populate("answers.answeredBy", "name email");
     res.json(questions);
   } catch (err) {
