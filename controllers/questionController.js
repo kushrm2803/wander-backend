@@ -41,7 +41,7 @@ exports.getQuestions = async (req, res) => {
     const { blogId } = req.params;
     const questions = await Question.find({ blog: blogId })
       .populate("askedBy", "name email photo")
-      .populate("answers.answeredBy", "name email");
+      .populate("answers.answeredBy", "name email photo");
     res.json(questions);
   } catch (err) {
     res.status(500).json({ error: err.message });
