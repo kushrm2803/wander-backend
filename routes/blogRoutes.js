@@ -22,6 +22,8 @@ router.delete("/:id", authMiddleware, blogController.deleteBlogPost);
 router.post("/:id/rate", authMiddleware, blogController.rateBlog);
 //PUT api/blogs/[id]/rate
 router.put("/:id/rate", authMiddleware, blogController.updateRating);
+//GET api/blogs/host/[userId]
+router.get("/host/:userId", authMiddleware, blogController.getBlogsByHost);
 
 
 module.exports = router;

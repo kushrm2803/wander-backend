@@ -276,3 +276,17 @@ exports.searchBlogs = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+//GET /api/blogs/host/[userId]
+exports.getBlogsByHost = async (req, res) => {
+  try {
+      const hostId = req.params.userId;
+      // Find blogs where the host matches the given userId
+      const blogs = await BlogPost.find({ host: hostId });
+      res.status(200).json({ success: true, data: blogs });
+  } catch (error) {
+      console.error("Error fetching blogs:", error);
+      res.status(500).json({ success: false, message: "Server Error", error: error.message });
+  }
+
+};
