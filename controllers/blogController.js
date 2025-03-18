@@ -38,6 +38,9 @@ exports.createBlogPost = async (req, res) => {
       });
       blogCoverPhoto = result.secure_url;
     }
+    else{
+      blogCoverPhoto = "https://media.istockphoto.com/id/1381637603/photo/mountain-landscape.jpg?s=612x612&w=0&k=20&c=w64j3fW8C96CfYo3kbi386rs_sHH_6BGe8lAAAFS-y4=";
+    }
 
     // Upload multiple blog photos
     let blogPhotos = [];
