@@ -98,12 +98,15 @@ exports.getBlogPosts = async (req, res) => {
     const blogPosts = await BlogPost.find()
       .populate("trip")
       .populate("host", "name email photo")
-      .populate("ratings.user", "name email");
+      .populate("ratings.user", "name email")
+      .sort({ createdAt: -1 });
+
     res.json(blogPosts);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // GET /api/blogs/:id
 exports.getBlogPostById = async (req, res) => {
@@ -147,8 +150,7 @@ exports.updateBlogPost = async (req, res) => {
     if (title !== undefined) blogPost.title = title;
     if (summary !== undefined) blogPost.summary = summary;
     if (description !== undefined) blogPost.description = description;
-    if (recommendations !== undefined)
-      blogPost.recommendations = recommendations;
+    if (recommendations !== undefined) blogPost.recommendations = recommendations;
     if (advisory !== undefined) blogPost.advisory = advisory;
     if (coverPhoto !== undefined) blogPost.coverPhoto = coverPhoto;
     if (photos !== undefined) blogPost.photos = photos;
