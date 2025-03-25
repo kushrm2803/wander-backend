@@ -367,12 +367,19 @@ exports.getTrendingBlogs = async (req, res) => {
       },
       {
         $addFields: {
+          logViews: { $log10: { $add: ["$views", 1] } }, // Log scaling for views
+          logQuestions: { $log10: { $add: ["$totalQuestions", 1] } }, // Log scaling for questions
+          logAnswers: { $log10: { $add: ["$totalAnswers", 1] } } // Log scaling for answers
+        }
+      },
+      {
+        $addFields: {
           trendingScore: {
             $sum: [
-              { $multiply: ["$bayesianRating", 2] },
-              { $multiply: ["$views", 0.1] },
-              { $multiply: ["$totalQuestions", 0.5] },
-              { $multiply: ["$totalAnswers", 0.75] }
+              { $multiply: ["$bayesianRating", 5] }, // Ratings contribute directly
+              { $multiply: ["$logViews", 1.5] }, // Views scaled down
+              { $multiply: ["$logQuestions", 2] }, // Questions scaled down
+              { $multiply: ["$logAnswers", 2.5] } // Answers scaled down
             ]
           }
         }
@@ -381,14 +388,8 @@ exports.getTrendingBlogs = async (req, res) => {
       { $limit: 10 }
     ]);
 
-    // Populate trip, host, and ratings.user
-    const populatedBlogs = await BlogPost.populate(blogs, [
-      { path: "host", select: "name email photo" },
-      { path: "ratings.user", select: "name email" }
-    ]);
-
-    res.json(populatedBlogs);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json(blogs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
