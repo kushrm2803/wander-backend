@@ -388,7 +388,13 @@ exports.getTrendingBlogs = async (req, res) => {
       { $limit: 10 }
     ]);
 
-    res.json(blogs);
+    const populatedBlogs = await BlogPost.populate(blogs, {
+      path: "host",
+      select: "name email photo"
+    });
+
+    res.json(populatedBlogs);
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
