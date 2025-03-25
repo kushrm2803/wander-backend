@@ -323,9 +323,8 @@ exports.getBlogsByHost = async (req, res) => {
 };
 
 //GET api/blogs/trendings
-exports.getTrendingBlogs = async(req, res) => {
+exports.getTrendingBlogs = async (req, res) => {
   try {
-    // Fetch blogs with engagement metrics
     const blogs = await BlogPost.aggregate([
       {
         $lookup: {
@@ -337,18 +336,18 @@ exports.getTrendingBlogs = async(req, res) => {
       },
       {
         $addFields: {
-          totalQuestions: { $size: "$questions" }, // Count questions
+          totalQuestions: { $size: "$questions" },
           totalAnswers: {
             $sum: {
               $map: {
                 input: "$questions",
                 as: "q",
-                in: { $size: "$$q.answers" } // Count answers
+                in: { $size: "$$q.answers" }
               }
             }
           },
-          avgRating: { $avg: "$ratings.value" }, // Average rating
-          ratingCount: { $size: "$ratings" } // Number of ratings
+          avgRating: { $avg: "$ratings.value" },
+          ratingCount: { $size: "$ratings" }
         }
       },
       {
@@ -358,7 +357,7 @@ exports.getTrendingBlogs = async(req, res) => {
               {
                 $sum: [
                   { $multiply: ["$ratingCount", "$avgRating"] },
-                  10 * 3.5 // Prior belief (assumes 10 ratings of 3.5)
+                  10 * 3.5
                 ]
               },
               { $sum: ["$ratingCount", 10] }
@@ -370,19 +369,25 @@ exports.getTrendingBlogs = async(req, res) => {
         $addFields: {
           trendingScore: {
             $sum: [
-              { $multiply: ["$bayesianRating", 2] }, // Rating weight
-              { $multiply: ["$views", 0.1] }, // Views weight
-              { $multiply: ["$totalQuestions", 0.5] }, // Question weight
-              { $multiply: ["$totalAnswers", 0.75] } // Answer weight, answering shows more engangement
+              { $multiply: ["$bayesianRating", 2] },
+              { $multiply: ["$views", 0.1] },
+              { $multiply: ["$totalQuestions", 0.5] },
+              { $multiply: ["$totalAnswers", 0.75] }
             ]
           }
         }
       },
-      { $sort: { trendingScore: -1 } }, // Sort by highest trending score
-      { $limit: 10 } // Get top 10 trending blogs
+      { $sort: { trendingScore: -1 } },
+      { $limit: 10 }
     ]);
 
-    res.json(blogs);
+    // Populate trip, host, and ratings.user
+    const populatedBlogs = await BlogPost.populate(blogs, [
+      { path: "host", select: "name email photo" },
+      { path: "ratings.user", select: "name email" }
+    ]);
+
+    res.json(populatedBlogs);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
