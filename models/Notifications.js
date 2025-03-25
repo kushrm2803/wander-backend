@@ -4,8 +4,13 @@ const notificationSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }, // For whom the notification is
     tripId: { type: mongoose.Schema.Types.ObjectId, ref: "Trip", required: true }, // Trip for which they are invited
-    message: { type: String, required: true }, // Notification message
-    isRead: { type: Boolean, default: false }, // To track read status
+    message: { type: String, required: true },
+    isRead: { type: Boolean, default: false }, 
+    type: {
+      type: String,
+      enum: ["request", "invitation"],
+      default: "invitation"
+    },
   },
   { timestamps: true }
 );

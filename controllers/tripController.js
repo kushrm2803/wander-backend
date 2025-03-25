@@ -239,6 +239,7 @@ exports.inviteMember = async (req, res) => {
       userId: memberId, // User who gets the notification
       tripId: trip._id, // Trip for which they were invited
       message: `You have been invited to join the trip: ${trip.title}`, // Custom message
+      type: "invitation"
     });
 
     res.json({ message: "Invitation sent and notification created" });
@@ -328,30 +329,41 @@ exports.joinTrip = async (req, res) => {
   try {
     const trip = await Trip.findById(req.params.id);
     if (!trip) return res.status(404).json({ message: "Trip not found" });
+
     if (!trip.isPublic) {
       return res
         .status(403)
         .json({ message: "This trip is private; you must be invited." });
     }
+
     if (trip.members.some((m) => m.user.toString() === req.user.userId)) {
       return res
         .status(400)
-        .json({ message: "You are already a member of this trip" });
+        .json({ message: "You have already requested to join this trip" });
     }
+
     trip.members.push({
       user: req.user.userId,
       role: "viewer",
-      status: "accepted",
+      status: "pending",
     });
+
     await trip.save();
-    await User.findByIdAndUpdate(req.user.userId, {
-      $push: { tripHistory: trip._id },
+
+    // Create a notification for the trip host
+    await Notification.create({
+      userId: trip.host, // Assuming trip.host is the host's ObjectId
+      tripId: trip._id,
+      message: `${req.user.name} has requested to join your trip.`,
+      type: "request",
     });
-    res.json({ message: "You have joined the trip successfully", trip });
+
+    res.json({ message: "Join request sent successfully", trip });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // POST /api/trips/:id/change-role
 exports.changeMemberRole = async (req, res) => {
@@ -464,5 +476,45 @@ exports.updateCoverPhoto = async (req, res) => {
   } catch (err) {
     console.error("Error updating cover photo:", err);
     res.status(500).json({ error: "Server Error" });
+  }
+};
+
+//POST /api/trips/[tripID]/join-request/[userId]
+exports.handleJoinRequest = async (req, res) => {
+  try {
+    const { tripId, userId } = req.params;
+    const { response } = req.body; // expected to be "accept" or "reject"
+
+    const trip = await Trip.findById(tripId);
+    if (!trip) return res.status(404).json({ message: "Trip not found" });
+
+    // Check if the request is coming from the trip host
+    if (trip.host.toString() !== req.user.userId) {
+      return res.status(403).json({ message: "Only the host can manage join requests" });
+    }
+
+    // Find the member with a pending status
+    const member = trip.members.find((m) => m.user.toString() === userId && m.status === "pending");
+    if (!member) {
+      return res.status(400).json({ message: "No pending request found for this user" });
+    }
+
+    if (response === "accept") {
+      member.status = "accepted"; // Approve the request
+    } else if (response === "reject") {
+      // Remove the user from the members list
+      trip.members = trip.members.filter((m) => m.user.toString() !== userId);
+    } else {
+      return res.status(400).json({ message: "Invalid response. Use 'accept' or 'reject'" });
+    }
+
+    await trip.save();
+
+    // Delete the notification related to this join request
+    await Notification.findOneAndDelete({ tripId, userId });
+
+    res.json({ message: `User has been ${response}ed successfully.` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
