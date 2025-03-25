@@ -2,6 +2,8 @@ const cloudinary = require("../config/cloudinary");
 const BlogPost = require("../models/BlogPost");
 const User = require("../models/User");
 const Trip = require("../models/Trip");
+const BlogViewLog = require("../models/BlogViewLog");
+const Question = require("../models/Questions");
 
 // POST /api/blogs
 exports.createBlogPost = async (req, res) => {
@@ -111,17 +113,44 @@ exports.getBlogPosts = async (req, res) => {
 // GET /api/blogs/:id
 exports.getBlogPostById = async (req, res) => {
   try {
-    const blogPost = await BlogPost.findById(req.params.id)
+    const blogId = req.params.id;
+    const userIp = req.ip || req.headers["x-forwarded-for"] || req.connection.remoteAddress; // Get user IP
+
+    // Check if the user has viewed this blog in the last 10 minutes
+    const recentView = await BlogViewLog.findOne({
+      userIp,
+      blogId,
+      lastViewed: { $gte: new Date(Date.now() - 3 * 60 * 1000) } // 3 minutes limit
+    });
+
+    if (!recentView) {
+      // If no recent view, increment the blog's views and log it
+      await BlogPost.findByIdAndUpdate(blogId, { $inc: { views: 1 } });
+
+      await BlogViewLog.findOneAndUpdate(
+        { userIp, blogId },
+        { lastViewed: new Date() },
+        { upsert: true } // Create a new entry if none exists
+      );
+    }
+
+    // Fetch blog details
+    const blogPost = await BlogPost.findById(blogId)
       .populate("trip")
       .populate("host", "name email photo")
       .populate("ratings.user", "name email");
-    if (!blogPost)
+
+    if (!blogPost) {
       return res.status(404).json({ message: "Blog post not found" });
+    }
+
     res.json(blogPost);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
+
 
 // PUT /api/blogs/:id
 exports.updateBlogPost = async (req, res) => {
@@ -291,4 +320,70 @@ exports.getBlogsByHost = async (req, res) => {
       res.status(500).json({ success: false, message: "Server Error", error: error.message });
   }
 
+};
+
+//GET api/blogs/trendings
+exports.getTrendingBlogs = async(req, res) => {
+  try {
+    // Fetch blogs with engagement metrics
+    const blogs = await BlogPost.aggregate([
+      {
+        $lookup: {
+          from: "questions",
+          localField: "_id",
+          foreignField: "blog",
+          as: "questions"
+        }
+      },
+      {
+        $addFields: {
+          totalQuestions: { $size: "$questions" }, // Count questions
+          totalAnswers: {
+            $sum: {
+              $map: {
+                input: "$questions",
+                as: "q",
+                in: { $size: "$$q.answers" } // Count answers
+              }
+            }
+          },
+          avgRating: { $avg: "$ratings.value" }, // Average rating
+          ratingCount: { $size: "$ratings" } // Number of ratings
+        }
+      },
+      {
+        $addFields: {
+          bayesianRating: {
+            $divide: [
+              {
+                $sum: [
+                  { $multiply: ["$ratingCount", "$avgRating"] },
+                  10 * 3.5 // Prior belief (assumes 10 ratings of 3.5)
+                ]
+              },
+              { $sum: ["$ratingCount", 10] }
+            ]
+          }
+        }
+      },
+      {
+        $addFields: {
+          trendingScore: {
+            $sum: [
+              { $multiply: ["$bayesianRating", 2] }, // Rating weight
+              { $multiply: ["$views", 0.1] }, // Views weight
+              { $multiply: ["$totalQuestions", 0.5] }, // Question weight
+              { $multiply: ["$totalAnswers", 0.75] } // Answer weight, answering shows more engangement
+            ]
+          }
+        }
+      },
+      { $sort: { trendingScore: -1 } }, // Sort by highest trending score
+      { $limit: 10 } // Get top 10 trending blogs
+    ]);
+
+    res.json(blogs);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };

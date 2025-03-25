@@ -12,6 +12,8 @@ router.post("/", authMiddleware, upload.fields([
   ]), blogController.createBlogPost);
 //GET api/blogs
 router.get("/", blogController.getBlogPosts);
+//GET api/blogs/trendings
+router.get("/trendings", authMiddleware, blogController.getTrendingBlogs);
 //GET api/blogs/[id]
 router.get("/:id", blogController.getBlogPostById);
 //PUT api/blogs/[id]
