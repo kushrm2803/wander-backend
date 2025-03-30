@@ -338,7 +338,7 @@ exports.joinTrip = async (req, res) => {
 
     if (trip.members.some((m) => m.user.toString() === req.user.userId)) {
       return res
-        .status(400)
+        .status(200)
         .json({ message: "You have already requested to join this trip" });
     }
 
