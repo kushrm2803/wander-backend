@@ -44,7 +44,8 @@ router.put(
   upload.single("coverPhoto"), // Accept a single file upload
   tripController.updateCoverPhoto
 );
-//POST /api/trips/[tripID]/join-request/[userId]
-router.post("/:tripId/join-requests/:userId", authMiddleware, tripController.handleJoinRequest);
+
+// //POST /api/trips/[tripID]/join-request/[userId]
+// router.post("/:tripId/join-requests/:userId", authMiddleware, tripController.handleJoinRequest);
 
 module.exports = router;

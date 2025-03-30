@@ -350,15 +350,17 @@ exports.joinTrip = async (req, res) => {
 
     await trip.save();
 
-    // Create a notification for the trip host
-    await Notification.create({
+    let newNotification = {
       userId: trip.host, // Assuming trip.host is the host's ObjectId
       tripId: trip._id,
       message: `${req.user.name} has requested to join your trip.`,
       type: "request",
-    });
+      requestMadeBy: req.user.userId,
+    }
+    // Create a notification for the trip host
+    await Notification.create(newNotification);
 
-    res.json({ message: "Join request sent successfully", trip });
+    res.json({ message: "Join request sent successfully", trip, newNotification});
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -479,42 +481,42 @@ exports.updateCoverPhoto = async (req, res) => {
   }
 };
 
-//POST /api/trips/[tripID]/join-request/[userId]
-exports.handleJoinRequest = async (req, res) => {
-  try {
-    const { tripId, userId } = req.params;
-    const { response } = req.body; // expected to be "accept" or "reject"
+// //POST /api/trips/[tripID]/join-request/[userId]
+// exports.handleJoinRequest = async (req, res) => {
+//   try {
+//     const { tripId, userId } = req.params;
+//     const { response } = req.body; // expected to be "accept" or "reject"
 
-    const trip = await Trip.findById(tripId);
-    if (!trip) return res.status(404).json({ message: "Trip not found" });
+//     const trip = await Trip.findById(tripId);
+//     if (!trip) return res.status(404).json({ message: "Trip not found" });
 
-    // Check if the request is coming from the trip host
-    if (trip.host.toString() !== req.user.userId) {
-      return res.status(403).json({ message: "Only the host can manage join requests" });
-    }
+//     // Check if the request is coming from the trip host
+//     if (trip.host.toString() !== req.user.userId) {
+//       return res.status(403).json({ message: "Only the host can manage join requests" });
+//     }
 
-    // Find the member with a pending status
-    const member = trip.members.find((m) => m.user.toString() === userId && m.status === "pending");
-    if (!member) {
-      return res.status(400).json({ message: "No pending request found for this user" });
-    }
+//     // Find the member with a pending status
+//     const member = trip.members.find((m) => m.user.toString() === userId && m.status === "pending");
+//     if (!member) {
+//       return res.status(400).json({ message: "No pending request found for this user" });
+//     }
 
-    if (response === "accept") {
-      member.status = "accepted"; // Approve the request
-    } else if (response === "reject") {
-      // Remove the user from the members list
-      trip.members = trip.members.filter((m) => m.user.toString() !== userId);
-    } else {
-      return res.status(400).json({ message: "Invalid response. Use 'accept' or 'reject'" });
-    }
+//     if (response === "accept") {
+//       member.status = "accepted"; // Approve the request
+//     } else if (response === "reject") {
+//       // Remove the user from the members list
+//       trip.members = trip.members.filter((m) => m.user.toString() !== userId);
+//     } else {
+//       return res.status(400).json({ message: "Invalid response. Use 'accept' or 'reject'" });
+//     }
 
-    await trip.save();
+//     await trip.save();
 
-    // Delete the notification related to this join request
-    await Notification.findOneAndDelete({ tripId, userId });
+//     // Delete the notification related to this join request
+//     await Notification.findOneAndDelete({ tripId, userId });
 
-    res.json({ message: `User has been ${response}ed successfully.` });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+//     res.json({ message: `User has been ${response}ed successfully.` });
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// };
