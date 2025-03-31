@@ -227,7 +227,7 @@ exports.inviteMember = async (req, res) => {
     }
 
     if (trip.members.some((m) => m.user.toString() === memberId)) {
-      return res.status(400).json({ message: "User already invited or a member" });
+      return res.status(200).json({ message: "User already invited or a member" });
     }
 
     // Add member with pending status
@@ -242,7 +242,7 @@ exports.inviteMember = async (req, res) => {
       type: "invitation"
     });
 
-    res.json({ message: "Invitation sent and notification created" });
+    res.status(201).json({ message: "Invitation sent and notification created" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -360,7 +360,7 @@ exports.joinTrip = async (req, res) => {
     // Create a notification for the trip host
     await Notification.create(newNotification);
 
-    res.json({ message: "Join request sent successfully", trip, newNotification});
+    res.status(201).json({ message: "Join request sent successfully", trip, newNotification});
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
