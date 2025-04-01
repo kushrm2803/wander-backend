@@ -172,17 +172,25 @@ exports.deleteTrip = async (req, res) => {
   try {
     const trip = await Trip.findById(req.params.id);
     if (!trip) return res.status(404).json({ message: "Trip not found" });
-    if (trip.host.toString() !== req.user.userId) {
+
+    // Fetch user details
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Check if the user is the host or an admin
+    if (trip.host.toString() !== req.user.userId && !user.isAdmin) {
       return res
         .status(403)
-        .json({ message: "Only the host can delete the trip" });
+        .json({ message: "Only the host or an admin can delete the trip" });
     }
+
     await trip.deleteOne();
     res.json({ message: "Trip deleted successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // POST /api/trips/[TripID]/copy
 exports.copyTrip = async (req, res) => {
