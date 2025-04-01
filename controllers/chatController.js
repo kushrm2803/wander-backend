@@ -80,18 +80,18 @@ exports.getMessages = async (req, res) => {
       "name email"
     );
 
+    // If no chat room exists, return an empty array (instead of a 404 error)
     if (!chatRoom) {
-      return res.status(404).json({ message: "Chat room not found" });
+      return res.json([]); 
     }
 
-    // Return an empty array if there are no messages
+    // If the chat room exists but has no messages, return an empty array
     if (!chatRoom.messages || chatRoom.messages.length === 0) {
       return res.json([]);
     }
 
     res.json(chatRoom.messages);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message }); // Only return error for actual issues
   }
 };
-
