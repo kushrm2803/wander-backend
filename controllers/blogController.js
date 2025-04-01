@@ -207,17 +207,25 @@ exports.deleteBlogPost = async (req, res) => {
     const blogPost = await BlogPost.findById(req.params.id);
     if (!blogPost)
       return res.status(404).json({ message: "Blog post not found" });
-    if (blogPost.host.toString() !== req.user.userId) {
+
+    // Fetch user details
+    const user = await User.findById(req.userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Check if the user is the blog owner or an admin
+    if (blogPost.host.toString() !== req.userId && !user.isAdmin) {
       return res
         .status(403)
         .json({ message: "Unauthorized to delete this blog post" });
     }
+
     await blogPost.deleteOne();
     res.json({ message: "Blog post deleted successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // POST /api/blogs/:id/rate
 exports.rateBlog = async (req, res) => {

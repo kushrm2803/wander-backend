@@ -19,7 +19,11 @@ const UserSchema = new mongoose.Schema(
     },
     photo: {
       type: String,
-      default: "https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg"
+      default: "https://upload.wikimedia.org/wikipedia/commons/a/ac/Default_pfp.jpg",
+    },
+    isAdmin: {
+      type: Boolean,
+      default: false,
     },
     friends: [
       {
