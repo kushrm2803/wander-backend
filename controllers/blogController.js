@@ -209,11 +209,12 @@ exports.deleteBlogPost = async (req, res) => {
       return res.status(404).json({ message: "Blog post not found" });
 
     // Fetch user details
-    const user = await User.findById(req.userId);
+    // console.log(req.user.userId);
+    const user = await User.findById(req.user.userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
     // Check if the user is the blog owner or an admin
-    if (blogPost.host.toString() !== req.userId && !user.isAdmin) {
+    if (blogPost.host.toString() !== req.user.userId && !user?.isAdmin) {
       return res
         .status(403)
         .json({ message: "Unauthorized to delete this blog post" });
