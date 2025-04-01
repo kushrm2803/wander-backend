@@ -79,10 +79,19 @@ exports.getMessages = async (req, res) => {
       "messages.sender",
       "name email"
     );
-    if (!chatRoom)
+
+    if (!chatRoom) {
       return res.status(404).json({ message: "Chat room not found" });
+    }
+
+    // Return an empty array if there are no messages
+    if (!chatRoom.messages || chatRoom.messages.length === 0) {
+      return res.json([]);
+    }
+
     res.json(chatRoom.messages);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
