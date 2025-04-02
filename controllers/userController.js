@@ -122,3 +122,17 @@ exports.removeProfilePhoto = async (req, res) => {
     res.status(500).json({ error: "Server Error" });
   }
 };
+
+//GET /api/users/all-users
+exports.getAllUsers = async(req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if(!user.isAdmin){
+      return res.status(400).json({ message: "You are not Admin" });
+    }
+    const allUser = await User.find({}, "-password");
+    res.status(200).json(allUser);
+  }catch(err){
+    return res.status(400).json({ message: "Search query is required" });
+  }
+};
