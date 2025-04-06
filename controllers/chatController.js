@@ -1,4 +1,3 @@
-// controllers/chatController.js
 const ChatRoom = require("../models/ChatRoom");
 const Trip = require("../models/Trip");
 
@@ -77,7 +76,7 @@ exports.getMessages = async (req, res) => {
     const { tripId } = req.params;
     const chatRoom = await ChatRoom.findOne({ trip: tripId }).populate(
       "messages.sender",
-      "name email"
+      "name email photo"
     );
 
     // If no chat room exists, return an empty array (instead of a 404 error)
