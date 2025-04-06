@@ -291,6 +291,7 @@ exports.searchBlogs = async (req, res) => {
     const { query, tags } = req.query;
     let matchCriteria = {};
 
+    // Filter by tags if provided
     if (tags) {
       matchCriteria.tags = { $in: tags.split(",").map((tag) => tag.trim()) };
     }
@@ -301,30 +302,25 @@ exports.searchBlogs = async (req, res) => {
       .populate("host", "name email photo")
       .populate("ratings.user", "name email");
 
-    // Perform fuzzy search
+    // Fuzzy search
     if (query) {
       const fuse = new Fuse(blogs, {
         keys: [
           { name: "title", weight: 0.9 },
           { name: "summary", weight: 0.7, getFn: (obj) => obj.summary || "" },
-          {
-            name: "description",
-            weight: 0.6,
-            getFn: (obj) => obj.description || "",
-          },
-          {
-            name: "recommendations",
-            weight: 0.4,
-            getFn: (obj) => obj.recommendations || "",
-          },
+          { name: "description", weight: 0.6, getFn: (obj) => obj.description || "" },
+          { name: "recommendations", weight: 0.4, getFn: (obj) => obj.recommendations || "" },
           { name: "advisory", weight: 0.4, getFn: (obj) => obj.advisory || "" },
+          { name: "tags", weight: 0.5, getFn: (obj) => Array.isArray(obj.tags) ? obj.tags.join(" ") : "" },
+          { name: "trip.name", weight: 0.6, getFn: (obj) => obj.trip?.name || "" },
+          { name: "host.name", weight: 0.6, getFn: (obj) => obj.host?.name || "" },
         ],
-        threshold: 0.4, // change this to set the threshold for fuzzy search
+        threshold: 0.4,
         includeScore: true,
         ignoreLocation: true,
       });
+
       const fuseResults = fuse.search(query);
-      //best match first
       fuseResults.sort((a, b) => a.score - b.score);
       blogs = fuseResults.map((result) => result.item);
     }
