@@ -41,7 +41,10 @@ exports.respondToInvitation = async (req, res) => {
     if (!notification) return res.status(404).json({ message: "Notification not found" });
 
     const trip = await Trip.findById(notification.tripId).populate("host");
-    if (!trip) return res.status(404).json({ message: "Trip not found" });
+    if (!trip) {
+      await Notification.findByIdAndDelete(notificationId);
+      return res.status(404).json({ message: "Trip not found" })
+    };
 
     const memberIndex = trip.members.findIndex((m) => m.user.toString() === userId);
     if (memberIndex === -1) {
@@ -88,7 +91,10 @@ exports.respondToRequest = async (req, res) => {
     if (!notification) return res.status(404).json({ message: "Notification not found" });
 
     const trip = await Trip.findById(notification.tripId);
-    if (!trip) return res.status(404).json({ message: "Trip not found" });
+    if (!trip) {
+      await Notification.findByIdAndDelete(notificationId);
+      return res.status(404).json({ message: "Trip not found" })
+    };
 
     if (trip.host.toString() !== userId) {
       return res.status(403).json({ message: "Only the host can manage join requests" });
