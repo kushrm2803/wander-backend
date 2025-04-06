@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { getProfile, addFriend, updateProfilePhoto, getNotifications, searchUser, removeProfilePhoto, getAllUsers} = require("../controllers/userController");
+const { getProfile, addFriend, updateProfilePhoto, getNotifications, searchUser, removeProfilePhoto, getAllUsers, deleteUserById} = require("../controllers/userController");
 const authMiddleware = require("../middleware/authMiddleware");
 const upload = require("../middleware/upload")
 
@@ -18,5 +18,7 @@ router.get("/get-notifications", authMiddleware, getNotifications);
 router.get("/search", authMiddleware, searchUser);
 //GET /api/users/all-users
 router.get("/all-users", authMiddleware, getAllUsers);
+//DELETE /api/users/:id
+router.delete("/:id", authMiddleware, deleteUserById);
 
 module.exports = router;
