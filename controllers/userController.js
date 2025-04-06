@@ -52,15 +52,15 @@ exports.updateProfilePhoto = async (req, res) => {
   }
 }
 
-//GET /api/users/get-notifications
-exports.getNotifications = async (req, res) => {
-  try {
-    const notifications = await Notification.find({ userId: req.user.userId }).sort({ createdAt: -1 });
-    res.json(notifications);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+// //GET /api/users/get-notifications
+// exports.getNotifications = async (req, res) => {
+//   try {
+//     const notifications = await Notification.find({ userId: req.user.userId }).sort({ createdAt: -1 });
+//     res.json(notifications);
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// };
 
 // //GET /api/users/seach/qurey=name
 // exports.searchUser = async(req , res) => {

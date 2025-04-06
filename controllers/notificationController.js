@@ -6,9 +6,10 @@ const User = require("../models/User");
 exports.getUnrespondedInvites = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const notifications = await Notification.find({ userId, isRead: false })
+    const notifications = await Notification.find({userId})
       .populate("tripId", "coverPhoto title") // gets the coverPhoto field from the Trip model
-      .populate("requestMadeBy", "photo name"); // gets the profilePhoto and name fields from the User model
+      .populate("requestMadeBy", "photo name") // gets the profilePhoto and name fields from the User model
+      .sort({createdAt: -1});
     res.json(notifications);
   } catch (err) {
     console.error("Error fetching notifications:", err);
@@ -17,10 +18,11 @@ exports.getUnrespondedInvites = async (req, res) => {
 };
 
 //function to create alert notification
-const createAlertNotification = async (userId, message) => {
+const createAlertNotification = async (userId,tripId, message) => {
   try {
     const alert = new Notification({
       userId,
+      tripId,
       message,
       type: "alert"
     });
@@ -57,15 +59,15 @@ exports.respondToInvitation = async (req, res) => {
       trip.members[memberIndex].status = "accepted";
       await trip.save();
 
-      await createAlertNotification(trip.host._id, `${user.name} accepted your trip ${trip.title} invitation.`);
-      await createAlertNotification(userId, `You have joined the trip ${trip.title}.`);
+      await createAlertNotification(trip.host._id,trip._id, `${user.name} accepted your trip ${trip.title} invitation.`);
+      await createAlertNotification(userId,trip._id `You have joined the trip ${trip.title}.`);
 
       res.json({ message: "You have accepted the invitation!" });
     } else if (response === "reject") {
       trip.members.splice(memberIndex, 1);
       await trip.save();
 
-      await createAlertNotification(trip.host._id, `${user.name} rejected your trip ${trip.title} invitation.`);
+      await createAlertNotification(trip.host._id,trip._id `${user.name} rejected your trip ${trip.title} invitation.`);
 
       res.json({ message: "You have rejected the invitation!" });
     } else {
@@ -117,6 +119,7 @@ exports.respondToRequest = async (req, res) => {
       // Alert to user
       await createAlertNotification(
         requestMadeBy._id,
+        trip._id,
         `Your request to join the trip ${trip.title} has been accepted.`
       );
 
@@ -128,12 +131,14 @@ exports.respondToRequest = async (req, res) => {
       // Alert to user
       await createAlertNotification(
         requestMadeBy._id,
+        trip._id,
         `Your request to join the trip ${trip.title} was rejected.`
       );
 
       // Alert to host
       await createAlertNotification(
         userId,
+        trip._id,
         `You rejected ${requestMadeBy.name}'s request to join your trip ${trip.title}.`
       );
 
