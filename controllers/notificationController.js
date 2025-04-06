@@ -16,40 +16,59 @@ exports.getUnrespondedInvites = async (req, res) => {
   }
 };
 
+//function to create alert notification
+const createAlertNotification = async (userId, message) => {
+  try {
+    const alert = new Notification({
+      userId,
+      message,
+      type: "alert"
+    });
+    await alert.save();
+  } catch (error) {
+    console.error("Error creating alert notification:", error);
+  }
+};
+
+
 // POST /api/notifications/respond-to-invitation
 exports.respondToInvitation = async (req, res) => {
   try {
-    const { notificationId, response } = req.body; // Accept or Reject
-    const userId = req.user.userId; // Extract user from auth middleware
+    const { notificationId, response } = req.body;
+    const userId = req.user.userId;
 
     const notification = await Notification.findById(notificationId);
     if (!notification) return res.status(404).json({ message: "Notification not found" });
 
-    // Find the trip related to this notification
-    const trip = await Trip.findById(notification.tripId);
+    const trip = await Trip.findById(notification.tripId).populate("host");
     if (!trip) return res.status(404).json({ message: "Trip not found" });
 
-    // Check if the user is in the trip members list
     const memberIndex = trip.members.findIndex((m) => m.user.toString() === userId);
     if (memberIndex === -1) {
       return res.status(400).json({ message: "User is not invited to this trip" });
     }
 
+    const user = await User.findById(userId);
+
     if (response === "accept") {
-      // Change status to accepted
       trip.members[memberIndex].status = "accepted";
       await trip.save();
+
+      await createAlertNotification(trip.host._id, `${user.name} accepted your trip ${trip.title} invitation.`);
+      await createAlertNotification(userId, `You have joined the trip ${trip.title}.`);
+
       res.json({ message: "You have accepted the invitation!" });
     } else if (response === "reject") {
-      // Remove user from members list
       trip.members.splice(memberIndex, 1);
       await trip.save();
+
+      await createAlertNotification(trip.host._id, `${user.name} rejected your trip ${trip.title} invitation.`);
+
       res.json({ message: "You have rejected the invitation!" });
     } else {
       return res.status(400).json({ message: "Invalid response, use 'accept' or 'reject'" });
     }
 
-    // Remove the notification after processing response
     await Notification.findByIdAndDelete(notificationId);
   } catch (err) {
     console.error("Error responding to invitation:", err);
@@ -57,17 +76,17 @@ exports.respondToInvitation = async (req, res) => {
   }
 };
 
+
 //responds to join request
 //POST /api/notifications/respond-to-request
 exports.respondToRequest = async (req, res) => {
   try {
-    const { notificationId, response } = req.body; // Accept or Reject
-    const userId = req.user.userId; // Extract user from auth middleware
+    const { notificationId, response } = req.body;
+    const userId = req.user.userId;
 
     const notification = await Notification.findById(notificationId);
     if (!notification) return res.status(404).json({ message: "Notification not found" });
 
-    // Find the trip related to this notification
     const trip = await Trip.findById(notification.tripId);
     if (!trip) return res.status(404).json({ message: "Trip not found" });
 
@@ -75,34 +94,74 @@ exports.respondToRequest = async (req, res) => {
       return res.status(403).json({ message: "Only the host can manage join requests" });
     }
 
-    //Find the user who made the request
     const requestMadeBy = await User.findById(notification.requestMadeBy);
     if (!requestMadeBy) return res.status(404).json({ message: "User to join not found" });
 
-    // Check if the user is in the trip members list
-    const memberIndex = trip.members.findIndex((m) => m.user.toString() === requestMadeBy._id.toString());
+    const memberIndex = trip.members.findIndex(
+      (m) => m.user.toString() === requestMadeBy._id.toString()
+    );
     if (memberIndex === -1) {
-      return res.status(400).json({ message: "User has not been invited to this trip" });
+      return res.status(400).json({ message: "User has not requested to join this trip" });
     }
 
     if (response === "accept") {
-      // Change status to accepted
       trip.members[memberIndex].status = "accepted";
       await trip.save();
-      res.json({ message: "user is added" });
+
+      // Alert to user
+      await createAlertNotification(
+        requestMadeBy._id,
+        `Your request to join the trip ${trip.title} has been accepted.`
+      );
+
+      res.json({ message: "User is added" });
     } else if (response === "reject") {
-      // Remove user from members list
       trip.members.splice(memberIndex, 1);
       await trip.save();
-      res.json({ message: "You have rejected the invitation!" });
+
+      // Alert to user
+      await createAlertNotification(
+        requestMadeBy._id,
+        `Your request to join the trip ${trip.title} was rejected.`
+      );
+
+      // Alert to host
+      await createAlertNotification(
+        userId,
+        `You rejected ${requestMadeBy.name}'s request to join your trip ${trip.title}.`
+      );
+
+      res.json({ message: "You have rejected the request!" });
     } else {
       return res.status(400).json({ message: "Invalid response, use 'accept' or 'reject'" });
     }
 
-    // Remove the notification after processing response
     await Notification.findByIdAndDelete(notificationId);
   } catch (err) {
-    console.error("Error responding to invitation:", err);
+    console.error("Error responding to request:", err);
+    res.status(500).json({ error: "Server Error" });
+  }
+};
+
+//delete alert notification
+//DELETE /api/notifications/delete-alert-notification/[id]
+exports.deletAlertNotification = async (req, res) => {
+  try {
+    const userId = req.user.userId; // Extract user from auth middleware
+    const notificationId = req.params.id;
+
+    const notification = await Notification.findById(notificationId);
+    if (!notification) return res.status(404).json({ message: "Notification not found" });
+
+    // Check that the user owns it and it's an alert type
+    if (userId !== notification.userId.toString() || notification.type !== "alert") {
+      return res.status(400).json({ message: "You cannot delete the notification :)" });
+    }
+
+    await Notification.findByIdAndDelete(notificationId);
+    return res.status(200).json({ message: "Notification deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting notification:", err);
     res.status(500).json({ error: "Server Error" });
   }
 };
