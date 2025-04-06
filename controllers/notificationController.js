@@ -43,12 +43,12 @@ exports.respondToInvitation = async (req, res) => {
     const trip = await Trip.findById(notification.tripId).populate("host");
     if (!trip) {
       await Notification.findByIdAndDelete(notificationId);
-      return res.status(404).json({ message: "Trip not found" })
+      return res.status(200).json({ message: "Trip not found" })
     };
 
     const memberIndex = trip.members.findIndex((m) => m.user.toString() === userId);
     if (memberIndex === -1) {
-      return res.status(400).json({ message: "User is not invited to this trip" });
+      return res.json({ message: "User is not invited to this trip" });
     }
 
     const user = await User.findById(userId);
@@ -93,7 +93,7 @@ exports.respondToRequest = async (req, res) => {
     const trip = await Trip.findById(notification.tripId);
     if (!trip) {
       await Notification.findByIdAndDelete(notificationId);
-      return res.status(404).json({ message: "Trip not found" })
+      return res.json({ message: "Trip not found" })
     };
 
     if (trip.host.toString() !== userId) {
