@@ -4,6 +4,7 @@ const tripController = require("../controllers/tripController");
 const authMiddleware = require("../middleware/authMiddleware");
 const upload = require("../middleware/upload");
 
+router.get("/search", authMiddleware, tripController.searchTrips);
 // GET /api/trips/open
 router.get("/open", authMiddleware, tripController.getOpenTrips);
 // POST /api/trips/my-trips

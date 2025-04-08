@@ -370,9 +370,9 @@ exports.searchBlogs = async (req, res) => {
           { name: "tags", weight: 0.5, getFn: (obj) => Array.isArray(obj.tags) ? obj.tags.join(" ") : "" },
           { name: "host.name", weight: 0.6, getFn: (obj) => obj.host?.name || "" },
         ],
-        threshold: 0.4,
+        threshold: 0.3,
         includeScore: true,
-        ignoreLocation: true,
+        ignoreLocation: false,
       });
 
       // Extract just the search terms (remove filter commands)

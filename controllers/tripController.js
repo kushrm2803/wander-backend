@@ -2,6 +2,7 @@ const cloudinary = require("../config/cloudinary");
 const Trip = require("../models/Trip");
 const User = require("../models/User");
 const Notification = require("../models/Notifications")
+const Fuse = require("fuse.js");
 
 // POST /api/trips
 exports.createTrip = async (req, res) => {
@@ -488,6 +489,41 @@ exports.updateCoverPhoto = async (req, res) => {
     res.status(500).json({ error: "Server Error" });
   }
 };
+
+// GET /api/trips/search?query=...
+exports.searchTrips = async (req, res) => {
+  try {
+    const {query} = req.query;
+    let matchCriteria = {};
+
+    let trips = await Trip.find(matchCriteria)
+      .lean()
+      .populate("host", "name email photo")
+      .populate("members.user", "name email");
+    if (query) {
+      const fuse = new Fuse(trips, {
+        keys: [
+          { name: "title", weight: 0.9 },
+          { name: "description", weight: 0.8, getFn: (obj) => obj.description || "" },
+          { name: "metadata.destination", weight: 0.7, getFn: (obj) => obj.metadata?.destination || "" },
+          { name: "host.name", weight: 0.6, getFn: (obj) => obj.host?.name || "" },
+        ],
+        threshold: 0.3,
+        includeScore: true,
+        ignoreLocation: false,
+      });
+      const fuseResults = fuse.search(query);
+
+      fuseResults.sort((a, b) => a.score - b.score);
+
+      trips = fuseResults.map((result) => result.item);
+    }
+    res.json(trips);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 
 // //POST /api/trips/[tripID]/join-request/[userId]
 // exports.handleJoinRequest = async (req, res) => {
