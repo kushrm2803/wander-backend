@@ -507,6 +507,7 @@ exports.searchTrips = async (req, res) => {
           { name: "description", weight: 0.8, getFn: (obj) => obj.description || "" },
           { name: "metadata.destination", weight: 0.7, getFn: (obj) => obj.metadata?.destination || "" },
           { name: "host.name", weight: 0.6, getFn: (obj) => obj.host?.name || "" },
+          { name: "tags", weight: 0.5, getFn: (obj) => Array.isArray(obj.tags) ? obj.tags.join(" ") : "" },
         ],
         threshold: 0.3,
         includeScore: true,
