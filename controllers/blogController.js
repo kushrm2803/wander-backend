@@ -286,9 +286,6 @@ exports.updateRating = async (req, res) => {
 };
 
 // GET /api/blogs/search?query=...&tags=...
-const Fuse = require("fuse.js");
-const BlogPost = require("../models/BlogPost");
-
 exports.searchBlogs = async (req, res) => {
   try {
     const { query, tags } = req.query;
