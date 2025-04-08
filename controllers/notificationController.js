@@ -61,9 +61,9 @@ exports.respondToInvitation = async (req, res) => {
       await trip.save();
 
       await createAlertNotification(trip.host._id,trip._id, `${user.name} accepted your trip ${trip.title} invitation.`);
-      await createAlertNotification(userId,trip._id `You have joined the trip ${trip.title}.`);
+      await createAlertNotification(userId,trip._id, `You have joined the trip ${trip.title}.`);
 
-      res.json({ message: "You have accepted the invitation!" });
+      res.status(200).json({ message: "You have accepted the invitation!" });
     } else if (response === "reject") {
       trip.members.splice(memberIndex, 1);
       await trip.save();
