@@ -8,6 +8,7 @@ exports.getUnrespondedInvites = async (req, res) => {
     const userId = req.user.userId;
     const notifications = await Notification.find({userId})
       .populate("tripId", "coverPhoto title") // gets the coverPhoto field from the Trip model
+      .populate("blogId", "coverPhoto title")
       .populate("requestMadeBy", "photo name") // gets the profilePhoto and name fields from the User model
       .sort({createdAt: -1});
     res.json(notifications);
