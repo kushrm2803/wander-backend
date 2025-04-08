@@ -7,7 +7,7 @@ const createAlertNotification = async (userId, blogId, message) => {
   try {
     const alert = new Notification({
       userId,
-      tripId: blogId,
+      blogId,
       message,
       type: "blogalert",
     });

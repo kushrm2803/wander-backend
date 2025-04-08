@@ -8,6 +8,7 @@ exports.getUnrespondedInvites = async (req, res) => {
     const userId = req.user.userId;
     const notifications = await Notification.find({userId})
       .populate("tripId", "coverPhoto title") // gets the coverPhoto field from the Trip model
+      .populate("blogId", "coverPhoto title")
       .populate("requestMadeBy", "photo name") // gets the profilePhoto and name fields from the User model
       .sort({createdAt: -1});
     res.json(notifications);
@@ -165,7 +166,7 @@ exports.deletAlertNotification = async (req, res) => {
     if (!notification) return res.status(404).json({ message: "Notification not found" });
 
     // Check that the user owns it and it's an alert type
-    if (userId !== notification.userId.toString() || notification.type !== "alert") {
+    if (userId !== notification.userId.toString() || (notification.type !== "alert" && notification.type !== "blogalert")) {
       return res.status(400).json({ message: "You cannot delete the notification :)" });
     }
 
