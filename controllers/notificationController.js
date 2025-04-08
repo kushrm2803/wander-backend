@@ -54,7 +54,7 @@ exports.respondToInvitation = async (req, res) => {
       return res.json({ message: "User is not invited to this trip" });
     }
     if(trip.members[memberIndex].status == "accepted"){
-      res.json({message: "user is already a member"});
+      return res.json({message: "user is already a member"});
     }
 
     const user = await User.findById(userId);
