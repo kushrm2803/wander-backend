@@ -31,9 +31,9 @@ exports.askQuestion = async (req, res) => {
     const blog = await BlogPost.findById(blogId);
     const user = await User.findById(req.user.userId);
 
-    if (blog && blog.author.toString() !== req.user.userId) {
+    if (blog && blog.host.toString() !== req.user.userId) {
       await createAlertNotification(
-        blog.author,
+        blog.host,
         blogId,
         `${user.name} asked a question on your blog post.`
       );
@@ -60,9 +60,9 @@ exports.answerQuestion = async (req, res) => {
     await question.save();
     const user = await User.findById(req.user.userId);
 
-    if (question.askedBy._id.toString() !== req.user.userId) {
+    if (question.askedBy.toString() !== req.user.userId) {
       await createAlertNotification(
-        question.askedBy._id,
+        question.askedBy,
         question.blog,
         `${user.name} answered your question on a blog post.`
       );
