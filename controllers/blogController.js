@@ -296,81 +296,71 @@ exports.searchBlogs = async (req, res) => {
       matchCriteria.tags = { $in: tags.split(",").map((tag) => tag.trim()) };
     }
 
-    // Initial fetch
-    let blogs = await BlogPost.find(matchCriteria)
-      .lean()
-      .populate("trip")
-      .populate("host", "name email photo")
-      .populate("ratings.user", "name email");
-
-    // --- Parsing budget and days filters from the query ---
+    // Extract budget and days filters before executing the query
     let budgetFilter = {};
     let daysFilter = {};
 
     if (query) {
       const betweenBudget = query.match(/between\s+(\d+)\s+(and|-)\s+(\d+)\s*(rs|rupees|budget)?/i);
       if (betweenBudget) {
-        budgetFilter = {
-          min: parseInt(betweenBudget[1]),
-          max: parseInt(betweenBudget[3]),
+        // Add budget criteria to MongoDB query directly
+        matchCriteria.budget = { 
+          $gte: parseInt(betweenBudget[1]), 
+          $lte: parseInt(betweenBudget[3]) 
         };
       }
 
       const underBudget = query.match(/(under|less than|below)\s+(\d+)\s*(rs|rupees|budget)?/i);
       if (underBudget) {
-        budgetFilter = { max: parseInt(underBudget[2]) };
+        matchCriteria.budget = { $lte: parseInt(underBudget[2]) };
       }
 
       const overBudget = query.match(/(over|above|more than)\s+(\d+)\s*(rs|rupees|budget)?/i);
       if (overBudget) {
-        budgetFilter = { min: parseInt(overBudget[2]) };
+        matchCriteria.budget = { $gte: parseInt(overBudget[2]) };
       }
 
       const betweenDays = query.match(/between\s+(\d+)\s+(and|-)\s+(\d+)\s*(days|day)?/i);
       if (betweenDays) {
-        daysFilter = {
-          min: parseInt(betweenDays[1]),
-          max: parseInt(betweenDays[3]),
+        matchCriteria.days = { 
+          $gte: parseInt(betweenDays[1]), 
+          $lte: parseInt(betweenDays[3]) 
         };
       }
 
       const exactDays = query.match(/(\d+)\s*(days|day)/i);
-      if (exactDays && !daysFilter.min && !daysFilter.max) {
-        daysFilter = { exact: parseInt(exactDays[1]) };
+      if (exactDays && !betweenDays) {
+        matchCriteria.days = parseInt(exactDays[1]);
       }
 
       const underDays = query.match(/(under|less than|below)\s+(\d+)\s*(days|day)/i);
       if (underDays) {
-        daysFilter = { max: parseInt(underDays[2]) };
+        matchCriteria.days = { $lte: parseInt(underDays[2]) };
       }
 
       const overDays = query.match(/(over|above|more than)\s+(\d+)\s*(days|day)/i);
       if (overDays) {
-        daysFilter = { min: parseInt(overDays[2]) };
+        matchCriteria.days = { $gte: parseInt(overDays[2]) };
       }
     }
 
-    // --- Apply numeric filters ---
-    if (Object.keys(budgetFilter).length || Object.keys(daysFilter).length) {
-      blogs = blogs.filter((blog) => {
-        const budget = blog.budget || 0;
-        const days = blog.days || 0;
-
-        const budgetOk =
-          (!budgetFilter.min || budget >= budgetFilter.min) &&
-          (!budgetFilter.max || budget <= budgetFilter.max);
-
-        const daysOk =
-          (!daysFilter.min || days >= daysFilter.min) &&
-          (!daysFilter.max || days <= daysFilter.max) &&
-          (!daysFilter.exact || days === daysFilter.exact);
-
-        return budgetOk && daysOk;
-      });
-    }
-
-    // --- Fuzzy search using Fuse.js ---
-    if (query) {
+    // Create text search condition if query exists and doesn't only contain filter terms
+    const textSearch = query && !Object.keys(matchCriteria).some(key => key !== 'tags');
+    
+    // Determine if we need special text search
+    let blogs;
+    
+    if (textSearch) {
+      // If we need text search capabilities, use Fuse.js after fetch
+      blogs = await BlogPost.find(matchCriteria)
+        .lean()
+        .populate("trip")
+        .populate("host", "name email photo")
+        .populate("ratings.user", "name email");
+      
+      // Import Fuse - make sure it's installed and imported at the top of your file
+      // const Fuse = require('fuse.js');
+      
       const fuse = new Fuse(blogs, {
         keys: [
           { name: "title", weight: 0.9 },
@@ -385,14 +375,41 @@ exports.searchBlogs = async (req, res) => {
         ignoreLocation: true,
       });
 
-      const fuseResults = fuse.search(query);
-      fuseResults.sort((a, b) => a.score - b.score);
-      blogs = fuseResults.map((result) => result.item);
+      // Extract just the search terms (remove filter commands)
+      let searchText = query;
+      const filterPatterns = [
+        /between\s+(\d+)\s+(and|-)\s+(\d+)\s*(rs|rupees|budget)?/i,
+        /(under|less than|below)\s+(\d+)\s*(rs|rupees|budget)?/i,
+        /(over|above|more than)\s+(\d+)\s*(rs|rupees|budget)?/i,
+        /between\s+(\d+)\s+(and|-)\s+(\d+)\s*(days|day)?/i,
+        /(\d+)\s*(days|day)/i,
+        /(under|less than|below)\s+(\d+)\s*(days|day)/i,
+        /(over|above|more than)\s+(\d+)\s*(days|day)/i
+      ];
+      
+      filterPatterns.forEach(pattern => {
+        searchText = searchText.replace(pattern, '');
+      });
+      
+      searchText = searchText.trim();
+      
+      if (searchText) {
+        const fuseResults = fuse.search(searchText);
+        blogs = fuseResults.map((result) => result.item);
+      }
+    } else {
+      // If we only need filtering, use MongoDB query directly
+      blogs = await BlogPost.find(matchCriteria)
+        .lean()
+        .populate("trip")
+        .populate("host", "name email photo")
+        .populate("ratings.user", "name email");
     }
 
     res.json(blogs);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Error searching blogs:", err);
+    res.status(500).json({ error: "Failed to search blogs" });
   }
 };
 
