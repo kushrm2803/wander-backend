@@ -38,7 +38,7 @@ const BlogPostSchema = new mongoose.Schema(
     }],
     
     tags: [String],
-    
+    days: { type: Number},
     budget: { type: Number },
     
     concerns: ConcernsSchema,

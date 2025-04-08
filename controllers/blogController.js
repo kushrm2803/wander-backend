@@ -286,23 +286,93 @@ exports.updateRating = async (req, res) => {
 };
 
 // GET /api/blogs/search?query=...&tags=...
+const Fuse = require("fuse.js");
+const BlogPost = require("../models/BlogPost");
+
 exports.searchBlogs = async (req, res) => {
   try {
     const { query, tags } = req.query;
     let matchCriteria = {};
 
-    // Filter by tags if provided
+    // Tag filtering
     if (tags) {
       matchCriteria.tags = { $in: tags.split(",").map((tag) => tag.trim()) };
     }
 
+    // Initial fetch
     let blogs = await BlogPost.find(matchCriteria)
       .lean()
       .populate("trip")
       .populate("host", "name email photo")
       .populate("ratings.user", "name email");
 
-    // Fuzzy search
+    // --- Parsing budget and days filters from the query ---
+    let budgetFilter = {};
+    let daysFilter = {};
+
+    if (query) {
+      const betweenBudget = query.match(/between\s+(\d+)\s+(and|-)\s+(\d+)\s*(rs|rupees|budget)?/i);
+      if (betweenBudget) {
+        budgetFilter = {
+          min: parseInt(betweenBudget[1]),
+          max: parseInt(betweenBudget[3]),
+        };
+      }
+
+      const underBudget = query.match(/(under|less than|below)\s+(\d+)\s*(rs|rupees|budget)?/i);
+      if (underBudget) {
+        budgetFilter = { max: parseInt(underBudget[2]) };
+      }
+
+      const overBudget = query.match(/(over|above|more than)\s+(\d+)\s*(rs|rupees|budget)?/i);
+      if (overBudget) {
+        budgetFilter = { min: parseInt(overBudget[2]) };
+      }
+
+      const betweenDays = query.match(/between\s+(\d+)\s+(and|-)\s+(\d+)\s*(days|day)?/i);
+      if (betweenDays) {
+        daysFilter = {
+          min: parseInt(betweenDays[1]),
+          max: parseInt(betweenDays[3]),
+        };
+      }
+
+      const exactDays = query.match(/(\d+)\s*(days|day)/i);
+      if (exactDays && !daysFilter.min && !daysFilter.max) {
+        daysFilter = { exact: parseInt(exactDays[1]) };
+      }
+
+      const underDays = query.match(/(under|less than|below)\s+(\d+)\s*(days|day)/i);
+      if (underDays) {
+        daysFilter = { max: parseInt(underDays[2]) };
+      }
+
+      const overDays = query.match(/(over|above|more than)\s+(\d+)\s*(days|day)/i);
+      if (overDays) {
+        daysFilter = { min: parseInt(overDays[2]) };
+      }
+    }
+
+    // --- Apply numeric filters ---
+    if (Object.keys(budgetFilter).length || Object.keys(daysFilter).length) {
+      blogs = blogs.filter((blog) => {
+        const budget = blog.budget || 0;
+        const days = blog.days || 0;
+
+        const budgetOk =
+          (!budgetFilter.min || budget >= budgetFilter.min) &&
+          (!budgetFilter.max || budget <= budgetFilter.max);
+
+        const daysOk =
+          (!daysFilter.min || days >= daysFilter.min) &&
+          (!daysFilter.max || days <= daysFilter.max) &&
+          (!daysFilter.exact || days === daysFilter.exact);
+
+        return budgetOk && daysOk;
+      });
+    }
+
+    // --- Fuzzy search using Fuse.js ---
     if (query) {
       const fuse = new Fuse(blogs, {
         keys: [
@@ -328,6 +398,7 @@ exports.searchBlogs = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 //GET /api/blogs/host/[userId]
 exports.getBlogsByHost = async (req, res) => {
