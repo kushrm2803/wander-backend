@@ -9,7 +9,7 @@ const notificationSchema = new mongoose.Schema(
     requestMadeBy: {type: mongoose.Schema.Types.ObjectId, ref: "User", required: false}, 
     type: {
       type: String,
-      enum: ["request", "invitation", "alert"],
+      enum: ["request", "invitation", "alert","blogalert"],
       default: "invitation"
     },
   },

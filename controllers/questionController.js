@@ -9,7 +9,7 @@ const createAlertNotification = async (userId, blogId, message) => {
       userId,
       tripId: blogId,
       message,
-      type: "alert",
+      type: "blogalert",
     });
     await alert.save();
   } catch (error) {
