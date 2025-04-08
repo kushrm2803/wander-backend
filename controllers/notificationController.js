@@ -53,6 +53,9 @@ exports.respondToInvitation = async (req, res) => {
     if (memberIndex === -1) {
       return res.json({ message: "User is not invited to this trip" });
     }
+    if(trip.members[memberIndex].status == "accepted"){
+      res.json({message: "user is already a member"});
+    }
 
     const user = await User.findById(userId);
 
@@ -63,7 +66,6 @@ exports.respondToInvitation = async (req, res) => {
       await createAlertNotification(trip.host._id,trip._id, `${user.name} accepted your trip ${trip.title} invitation.`);
       await createAlertNotification(userId,trip._id, `You have joined the trip ${trip.title}.`);
 
-      res.status(200).json({ message: "You have accepted the invitation!" });
     } else if (response === "reject") {
       trip.members.splice(memberIndex, 1);
       await trip.save();
@@ -76,6 +78,7 @@ exports.respondToInvitation = async (req, res) => {
     }
 
     await Notification.findByIdAndDelete(notificationId);
+    res.status(200).json({ message: "You have accepted the invitation!" });
   } catch (err) {
     console.error("Error responding to invitation:", err);
     res.status(500).json({ error: "Server Error" });
