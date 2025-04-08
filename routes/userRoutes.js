@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { getProfile, addFriend, updateProfilePhoto, searchUser, removeProfilePhoto, getAllUsers, deleteUserById} = require("../controllers/userController");
+const { getProfile, addFriend, updateProfilePhoto, searchUser, removeProfilePhoto, getAllUsers, deleteUserById, updatePushToken } = require("../controllers/userController");
 const authMiddleware = require("../middleware/authMiddleware");
 const upload = require("../middleware/upload")
 
@@ -20,5 +20,7 @@ router.get("/search", authMiddleware, searchUser);
 router.get("/all-users", authMiddleware, getAllUsers);
 //DELETE /api/users/:id
 router.delete("/:id", authMiddleware, deleteUserById);
+//POST /api/users/push-token
+router.post('/push-token', authMiddleware, updatePushToken);
 
 module.exports = router;

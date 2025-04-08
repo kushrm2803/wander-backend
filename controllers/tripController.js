@@ -3,6 +3,7 @@ const Trip = require("../models/Trip");
 const User = require("../models/User");
 const Notification = require("../models/Notifications")
 const Fuse = require("fuse.js");
+const { sendPushNotification } = require('../services/notificationService');
 
 // POST /api/trips
 exports.createTrip = async (req, res) => {
@@ -239,6 +240,12 @@ exports.inviteMember = async (req, res) => {
       return res.status(200).json({ message: "User already invited or a member" });
     }
 
+    // Find the member being invited to get their push token
+    const invitedMember = await User.findById(memberId);
+    if (!invitedMember) {
+      return res.status(404).json({ message: "Invited user not found" });
+    }
+
     // Add member with pending status
     trip.members.push({ user: memberId, role: "viewer", status: "pending" });
     await trip.save();
@@ -250,6 +257,16 @@ exports.inviteMember = async (req, res) => {
       message: `You have been invited to join the trip: ${trip.title}`, // Custom message
       type: "invitation"
     });
+
+    // Send push notification if user has a push token
+    if (invitedMember.expoPushToken) {
+      await sendPushNotification(
+        [invitedMember.expoPushToken], // Array of tokens
+        'New Trip Invitation',
+        `You've been invited to join ${trip.title}!`,
+        { tripId: trip._id }
+      );
+    }
 
     res.status(201).json({ message: "Invitation sent and notification created" });
   } catch (err) {
@@ -368,6 +385,14 @@ exports.joinTrip = async (req, res) => {
     }
     // Create a notification for the trip host
     await Notification.create(newNotification);
+
+    // Send notification to trip host
+    await sendPushNotification(
+      [trip.host.expoPushToken],
+      'New Join Request',
+      `${req.user.name} wants to join your trip!`,
+      { tripId: trip._id }
+    );
 
     res.status(201).json({ message: "Join request sent successfully", trip, newNotification});
   } catch (err) {

@@ -157,3 +157,22 @@ exports.deleteUserById = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// router.post('/push-token', auth, userController.updatePushToken);
+exports.updatePushToken = async (req, res) => {
+  try {
+    const { expoPushToken } = req.body;
+    
+    if (!expoPushToken) {
+      return res.status(400).json({ message: 'Push token is required' });
+    }
+
+    await User.findByIdAndUpdate(req.user.userId, {
+      expoPushToken: expoPushToken
+    });
+
+    res.json({ message: 'Push token updated successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

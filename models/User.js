@@ -43,6 +43,15 @@ const UserSchema = new mongoose.Schema(
         ref: "BlogPost",
       },
     ],
+    expoPushToken: {
+      type: String,
+      default: null
+    },
+    notificationSettings: {
+      blogUpdates: { type: Boolean, default: true },
+      tripUpdates: { type: Boolean, default: true },
+      messages: { type: Boolean, default: true }
+    }
   },
   { timestamps: true }
 );
