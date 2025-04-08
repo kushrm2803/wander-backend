@@ -1,4 +1,21 @@
 const Question = require("../models/Questions");
+const BlogPost = require("../models/BlogPost");
+const Notification = require("../models/Notifications");
+const User = require("../models/User");
+
+const createAlertNotification = async (userId, blogId, message) => {
+  try {
+    const alert = new Notification({
+      userId,
+      tripId: blogId,
+      message,
+      type: "alert",
+    });
+    await alert.save();
+  } catch (error) {
+    console.error("Error creating alert notification:", error);
+  }
+};
 
 //POST /api/questions/ask (blogid passed in body)
 exports.askQuestion = async (req, res) => {
@@ -11,6 +28,17 @@ exports.askQuestion = async (req, res) => {
       answers: [],
     });
     await question.save();
+    const blog = await BlogPost.findById(blogId);
+    const user = await User.findById(req.user.userId);
+
+    if (blog && blog.author.toString() !== req.user.userId) {
+      await createAlertNotification(
+        blog.author,
+        blogId,
+        `${user.name} asked a question on your blog post.`
+      );
+    }
+
     res.status(201).json(question);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -23,12 +51,22 @@ exports.answerQuestion = async (req, res) => {
     const { questionId } = req.params;
     const { answerText } = req.body;
     const question = await Question.findById(questionId);
-    if (!question) return res.status(404).json({ message: "Question not found" });
+    if (!question)
+      return res.status(404).json({ message: "Question not found" });
     question.answers.push({
       answeredBy: req.user.userId,
       answerText,
     });
     await question.save();
+    const user = await User.findById(req.user.userId);
+
+    if (question.askedBy._id.toString() !== req.user.userId) {
+      await createAlertNotification(
+        question.askedBy._id,
+        question.blog,
+        `${user.name} answered your question on a blog post.`
+      );
+    }
     res.status(201).json(question);
   } catch (err) {
     res.status(500).json({ error: err.message });
