@@ -22,6 +22,7 @@ exports.createBlogPost = async (req, res) => {
       contactInfo,
       tags,
       budget,
+      days,
       concerns,
     } = req.body;
 
@@ -85,7 +86,7 @@ exports.createBlogPost = async (req, res) => {
       contactInfo,
       tags,
       budget,
-      concerns,
+      days
     });
 
     await blogPost.save();
