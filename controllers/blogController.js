@@ -303,16 +303,15 @@ exports.searchBlogs = async (req, res) => {
     let daysFilter = {};
 
     if (query) {
-      const betweenBudget = query.match(/between\s+(\d+)\s+(and|-)\s+(\d+)\s*(rs|rupees|budget)?/i);
+      const betweenBudget = query.match(/(between|bw|for)\s+(\d+)\s+(and|-|to)\s+(\d+)\s*(rs|rupees|budget|rps)?/i);
       if (betweenBudget) {
-        // Add budget criteria to MongoDB query directly
         matchCriteria.budget = { 
-          $gte: parseInt(betweenBudget[1]), 
-          $lte: parseInt(betweenBudget[3]) 
+          $gte: parseInt(betweenBudget[2]), 
+          $lte: parseInt(betweenBudget[4]) 
         };
       }
 
-      const underBudget = query.match(/(under|less than|below)\s+(\d+)\s*(rs|rupees|budget)?/i);
+      const underBudget = query.match(/(under|less than|below|undr|less)\s+(\d+)\s*(rs|rupees|budget|rps)?/i);
       if (underBudget) {
         matchCriteria.budget = { $lte: parseInt(underBudget[2]) };
       }
@@ -322,11 +321,11 @@ exports.searchBlogs = async (req, res) => {
         matchCriteria.budget = { $gte: parseInt(overBudget[2]) };
       }
 
-      const betweenDays = query.match(/between\s+(\d+)\s+(and|-)\s+(\d+)\s*(days|day)?/i);
+      const betweenDays = query.match(/(between|for)\s+(\d+)\s+(and|-|to)\s+(\d+)\s*(days|day)?/i);
       if (betweenDays) {
         matchCriteria.days = { 
-          $gte: parseInt(betweenDays[1]), 
-          $lte: parseInt(betweenDays[3]) 
+          $gte: parseInt(betweenDays[2]), 
+          $lte: parseInt(betweenDays[4]) 
         };
       }
 
@@ -335,7 +334,7 @@ exports.searchBlogs = async (req, res) => {
         matchCriteria.days = parseInt(exactDays[1]);
       }
 
-      const underDays = query.match(/(under|less than|below)\s+(\d+)\s*(days|day)/i);
+      const underDays = query.match(/(under|less than|below|undr|less)\s+(\d+)\s*(days|day)/i);
       if (underDays) {
         matchCriteria.days = { $lte: parseInt(underDays[2]) };
       }
@@ -353,16 +352,12 @@ exports.searchBlogs = async (req, res) => {
     let blogs;
     
     if (textSearch) {
-      // If we need text search capabilities, use Fuse.js after fetch
       blogs = await BlogPost.find(matchCriteria)
         .lean()
         .populate("trip")
         .populate("host", "name email photo")
         .populate("ratings.user", "name email");
-      
-      // Import Fuse - make sure it's installed and imported at the top of your file
-      // const Fuse = require('fuse.js');
-      
+
       const fuse = new Fuse(blogs, {
         keys: [
           { name: "title", weight: 0.9 },
@@ -380,13 +375,13 @@ exports.searchBlogs = async (req, res) => {
       // Extract just the search terms (remove filter commands)
       let searchText = query;
       const filterPatterns = [
-        /between\s+(\d+)\s+(and|-)\s+(\d+)\s*(rs|rupees|budget)?/i,
-        /(under|less than|below)\s+(\d+)\s*(rs|rupees|budget)?/i,
-        /(over|above|more than)\s+(\d+)\s*(rs|rupees|budget)?/i,
-        /between\s+(\d+)\s+(and|-)\s+(\d+)\s*(days|day)?/i,
+        /(between|bw|for)\s+(\d+)\s+(and|-)\s+(\d+)\s*(rs|rupees|budget)?/i,
+        /(under|less than|below|undr)\s+(\d+)\s*(rs|rupees|budget)?/i,
+        /(over|above|more than|more)\s+(\d+)\s*(rs|rupees|budget)?/i,
+        /(between|bw|for)\s+(\d+)\s+(and|-)\s+(\d+)\s*(days|day)?/i,
         /(\d+)\s*(days|day)/i,
-        /(under|less than|below)\s+(\d+)\s*(days|day)/i,
-        /(over|above|more than)\s+(\d+)\s*(days|day)/i
+        /(under|less than|below|undr)\s+(\d+)\s*(days|day)/i,
+        /(over|above|more than|more)\s+(\d+)\s*(days|day)/i
       ];
       
       filterPatterns.forEach(pattern => {
@@ -400,7 +395,6 @@ exports.searchBlogs = async (req, res) => {
         blogs = fuseResults.map((result) => result.item);
       }
     } else {
-      // If we only need filtering, use MongoDB query directly
       blogs = await BlogPost.find(matchCriteria)
         .lean()
         .populate("trip")
