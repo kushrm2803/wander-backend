@@ -299,10 +299,8 @@ exports.searchBlogs = async (req, res) => {
     }
 
     // Extract budget and days filters before executing the query
-    let budgetFilter = {};
-    let daysFilter = {};
-
     if (query) {
+      // Budget filters
       const betweenBudget = query.match(/(between|bw|for)\s+(\d+)\s+(and|-|to)\s+(\d+)\s*(rs|rupees|budget|rps)?/i);
       if (betweenBudget) {
         matchCriteria.budget = { 
@@ -321,27 +319,31 @@ exports.searchBlogs = async (req, res) => {
         matchCriteria.budget = { $gte: parseInt(overBudget[2]) };
       }
 
+      // Days filters - FIXED
       const betweenDays = query.match(/(between|for)\s+(\d+)\s+(and|-|to)\s+(\d+)\s*(days|day)?/i);
       if (betweenDays) {
         matchCriteria.days = { 
           $gte: parseInt(betweenDays[2]), 
           $lte: parseInt(betweenDays[4]) 
         };
-      }
+      } else {
+        // Only check these if no "between days" was found
+        
+        const exactDays = query.match(/(\d+)\s*(days|day)/i);
+        if (exactDays) {
+          // Fixed: Use the captured number group, not the whole match
+          matchCriteria.days = parseInt(exactDays[1]);
+        }
 
-      const exactDays = query.match(/(\d+)\s*(days|day)/i);
-      if (exactDays && !betweenDays) {
-        matchCriteria.days = parseInt(exactDays[0]);
-      }
+        const underDays = query.match(/(under|less than|below|undr|less)\s+(\d+)\s*(days|day)/i);
+        if (underDays) {
+          matchCriteria.days = { $lte: parseInt(underDays[2]) };
+        }
 
-      const underDays = query.match(/(under|less than|below|undr|less)\s+(\d+)\s*(days|day)/i);
-      if (underDays) {
-        matchCriteria.days = { $lte: parseInt(underDays[2]) };
-      }
-
-      const overDays = query.match(/(over|above|more than)\s+(\d+)\s*(days|day)/i);
-      if (overDays) {
-        matchCriteria.days = { $gte: parseInt(overDays[2]) };
+        const overDays = query.match(/(over|above|more than)\s+(\d+)\s*(days|day)/i);
+        if (overDays) {
+          matchCriteria.days = { $gte: parseInt(overDays[2]) };
+        }
       }
     }
 
@@ -408,7 +410,6 @@ exports.searchBlogs = async (req, res) => {
     res.status(500).json({ error: "Failed to search blogs" });
   }
 };
-
 
 //GET /api/blogs/host/[userId]
 exports.getBlogsByHost = async (req, res) => {
