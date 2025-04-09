@@ -180,6 +180,7 @@ exports.updateBlogPost = async (req, res) => {
       contactInfo,
       tags,
       budget,
+      days,
       concerns,
     } = req.body;
     if (title !== undefined) blogPost.title = title;
@@ -193,7 +194,7 @@ exports.updateBlogPost = async (req, res) => {
     if (contactInfo !== undefined) blogPost.contactInfo = contactInfo;
     if (tags !== undefined) blogPost.tags = tags;
     if (budget !== undefined) blogPost.budget = budget;
-    if (concerns !== undefined) blogPost.concerns = concerns;
+    if (days !== undefined) blogPost.days = days;
 
     await blogPost.save();
     res.json(blogPost);
