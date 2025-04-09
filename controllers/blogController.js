@@ -331,7 +331,7 @@ exports.searchBlogs = async (req, res) => {
 
       const exactDays = query.match(/(\d+)\s*(days|day)/i);
       if (exactDays && !betweenDays) {
-        matchCriteria.days = parseInt(exactDays[1]);
+        matchCriteria.days = parseInt(exactDays[0]);
       }
 
       const underDays = query.match(/(under|less than|below|undr|less)\s+(\d+)\s*(days|day)/i);
