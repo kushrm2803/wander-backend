@@ -1,0 +1,48 @@
+name: Deploy to GCE
+
+on:
+  push:
+    branches:
+      - main 
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18' 
+
+      - name: Install Dependencies
+        run: npm install
+
+
+      - name: Deploy to GCE VM
+        env:
+          GCE_SSH_PRIVATE_KEY: ${{ secrets.GCE_SSH_PRIVATE_KEY }}
+          GCE_HOST: 34.47.132.98   # Replace with your VM's external IP address
+          GCE_USERNAME: divyanshverma05440  # Your VM username
+          APP_DIRECTORY: /home/divyanshverma05440/wander-backend  # Your project path on the VM
+        run: |
+          # Write the private key to a file
+          echo "$GCE_SSH_PRIVATE_KEY" > gce_key
+          chmod 600 gce_key
+          
+          # SSH into the VM and deploy
+          ssh -o StrictHostKeyChecking=no -i gce_key $GCE_USERNAME@$GCE_HOST << 'EOF'
+            cd $APP_DIRECTORY
+            # Pull the latest code changes from the main branch
+            git pull origin main
+            # Install any new dependencies
+            npm install
+            # Restart the application using PM2 (if PM2 is not running, use pm2 start instead)
+            pm2 restart all || pm2 start server.js --name wander-backend
+          EOF
+
+          # Remove the SSH key file for security
+          rm gce_key
