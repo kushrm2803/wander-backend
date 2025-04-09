@@ -375,10 +375,10 @@ exports.searchBlogs = async (req, res) => {
       // Extract just the search terms (remove filter commands)
       let searchText = query;
       const filterPatterns = [
-        /(between|bw|for)\s+(\d+)\s+(and|-)\s+(\d+)\s*(rs|rupees|budget)?/i,
+        /(between|bw|for)\s+(\d+)\s+(and|-|to)\s+(\d+)\s*(rs|rupees|budget)?/i,
         /(under|less than|below|undr)\s+(\d+)\s*(rs|rupees|budget)?/i,
         /(over|above|more than|more)\s+(\d+)\s*(rs|rupees|budget)?/i,
-        /(between|bw|for)\s+(\d+)\s+(and|-)\s+(\d+)\s*(days|day)?/i,
+        /(between|bw|for)\s+(\d+)\s+(and|-|to)\s+(\d+)\s*(days|day)?/i,
         /(\d+)\s*(days|day)/i,
         /(under|less than|below|undr)\s+(\d+)\s*(days|day)/i,
         /(over|above|more than|more)\s+(\d+)\s*(days|day)/i
