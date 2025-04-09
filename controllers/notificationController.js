@@ -70,9 +70,8 @@ exports.respondToInvitation = async (req, res) => {
       trip.members.splice(memberIndex, 1);
       await trip.save();
 
-      await createAlertNotification(trip.host._id,trip._id `${user.name} rejected your trip ${trip.title} invitation.`);
+      await createAlertNotification(trip.host._id,trip._id, `${user.name} rejected your trip ${trip.title} invitation.`);
 
-      res.json({ message: "You have rejected the invitation!" });
     } else {
       return res.status(400).json({ message: "Invalid response, use 'accept' or 'reject'" });
     }
