@@ -13,7 +13,12 @@ const storage = new CloudinaryStorage({
     return {
       folder: folderName,
       format: "jpg",
-      public_id: `user-${req.user.userId}-${Date.now()}`
+      public_id: `user-${req.user.userId}-${Date.now()}`,
+      transformation: [
+        { width: 720, crop: "limit" }, // Resizes to max 1000px width without cropping
+        { quality: "auto" },            // Automatic quality optimization
+        { fetch_format: "auto" }        // Automatically selects best format (e.g., WebP)
+      ]
     };
   }
 });
