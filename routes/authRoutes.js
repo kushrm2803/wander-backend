@@ -6,8 +6,8 @@ const { registerInitiate, registerVerify, login, forgotPassword , resetPassword 
 // POST /api/auth/register
 router.post("/register", registerInitiate);
 
-//POST /api/auth/opt-verification
-router.post("/opt-verification", registerVerify);
+//POST /api/auth/otp-verification
+router.post("/otp-verification", registerVerify);
 
 // POST /api/auth/login
 router.post("/login", login);
