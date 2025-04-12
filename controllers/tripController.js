@@ -519,7 +519,7 @@ exports.updateCoverPhoto = async (req, res) => {
 exports.searchTrips = async (req, res) => {
   try {
     const {query} = req.query;
-    let matchCriteria = {isPulic: true};
+    let matchCriteria = {isPublic: true};
 
     let trips = await Trip.find(matchCriteria)
       .lean()
