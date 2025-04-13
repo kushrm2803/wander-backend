@@ -1,5 +1,6 @@
 const ChatRoom = require("../models/ChatRoom");
 const Trip = require("../models/Trip");
+const Notification = require("../models/Notifications");
 
 //GET /api/chat/trip/[id]
 exports.getChatRoom = async (req, res) => {
@@ -50,6 +51,7 @@ exports.postMessage = async (req, res) => {
     const { tripId } = req.params;
     const { content } = req.body;
     let chatRoom = await ChatRoom.findOne({ trip: tripId });
+
     if (!chatRoom) {
       chatRoom = new ChatRoom({
         trip: tripId,
@@ -57,18 +59,42 @@ exports.postMessage = async (req, res) => {
         messages: [],
       });
     }
+
     const message = { sender: req.user.userId, content };
     chatRoom.messages.push(message);
+
     const participantIds = chatRoom.participants.map((p) => p.toString());
     if (!participantIds.includes(req.user.userId)) {
       chatRoom.participants.push(req.user.userId);
     }
+
     await chatRoom.save();
+
+    // create alert notification
+    const trip = await Trip.findById(tripId).populate("members.user");
+    if (trip && trip.members) {
+      const notifications = trip.members
+        .filter(
+          (member) =>
+            member.status === "accepted" &&
+            member.user._id.toString() !== req.user.userId
+        )
+        .map((member) => ({
+          userId: member.user._id,
+          tripId,
+          message: `New message in trip: ${trip.title}`,
+          type: "alert",
+        }));
+
+      await Notification.insertMany(notifications);
+    }
+
     res.status(201).json(message);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 //GET /api/chat/trip/[id]/all-messages
 exports.getMessages = async (req, res) => {
