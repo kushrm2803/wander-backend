@@ -1,10 +1,13 @@
 const express = require("express");
 const router = express.Router();
-const { register, login, forgotPassword , resetPassword } = require("../controllers/authController");
+const { registerInitiate, registerVerify, login, forgotPassword , resetPassword } = require("../controllers/authController");
 
   
 // POST /api/auth/register
-router.post("/register", register);
+router.post("/register", registerInitiate);
+
+//POST /api/auth/otp-verification
+router.post("/otp-verification", registerVerify);
 
 // POST /api/auth/login
 router.post("/login", login);
