@@ -316,9 +316,11 @@ exports.leaveTrip = async (req, res) => {
   try {
     const trip = await Trip.findById(req.params.id);
     if (!trip) return res.status(404).json({ message: "Trip not found" });
+
     if (trip.host.toString() === req.user.userId) {
       return res.status(400).json({ message: "Host cannot leave the trip" });
     }
+
     const memberIndex = trip.members.findIndex(
       (m) => m.user.toString() === req.user.userId && m.status === "accepted"
     );
@@ -327,11 +329,28 @@ exports.leaveTrip = async (req, res) => {
         .status(400)
         .json({ message: "You are not an active member of this trip" });
     }
+
+    // Remove member from trip
     trip.members.splice(memberIndex, 1);
     await trip.save();
+
+    // Remove trip from user's tripHistory
     await User.findByIdAndUpdate(req.user.userId, {
       $pull: { tripHistory: trip._id },
     });
+
+    const user = await User.findById(req.user.userId);
+    const message = `${user.name} has left your trip ${trip.title}.`;
+
+    // Create alert notification for the host
+    await Notification.create({
+      userId: trip.host,
+      tripId: trip._id,
+      message,
+      type: "alert",
+      requestMadeBy: req.user.userId,
+    });
+
     res.json({ message: "Left the trip successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
