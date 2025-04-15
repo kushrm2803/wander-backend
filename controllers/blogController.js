@@ -290,126 +290,106 @@ exports.updateRating = async (req, res) => {
 // GET /api/blogs/search?query=...&tags=...
 exports.searchBlogs = async (req, res) => {
   try {
-    const { query, tags } = req.query;
+    let { query, tags } = req.query;
     let matchCriteria = {};
 
-    // Tag filtering
+    // --- Tags Filter ---
     if (tags) {
-      matchCriteria.tags = { $in: tags.split(",").map((tag) => tag.trim()) };
+      matchCriteria.tags = { $in: tags.split(",").map(tag => tag.trim()) };
     }
 
-    // Extract budget and days filters before executing the query
+    // --- REGEX Parsing for Budget Filters ---
+    // The negative lookahead (?!\s*days?) prevents matching numbers followed by "day/days"
+    const budgetMatch = query?.match(/(?:under|below|less than|for)\s*(\d+)(?!\s*days?)/i);
+    const budgetAboveMatch = query?.match(/(?:above|over|more than)\s*(\d+)(?!\s*days?)/i);
+    const budgetBetweenMatch = query?.match(/between\s*(\d+)\s*and\s*(\d+)(?!\s*days?)/i);
+
+    // --- REGEX Parsing for Days Filters ---
+    const daysMatch = query?.match(/for\s*(\d+)\s*days?/i);
+    // For these, the first capture group is the text ("more than" or "above", etc),
+    // and the second capture group is the number.
+    const daysAboveMatch = query?.match(/(more than|above)\s*(\d+)\s*days?/i);
+    const daysUnderMatch = query?.match(/(less than|under)\s*(\d+)\s*days?/i);
+
+    // --- Budget Filters ---
+    if (budgetMatch) {
+      matchCriteria.budget = { $lte: Number(budgetMatch[1]) };
+    } else if (budgetAboveMatch) {
+      matchCriteria.budget = { $gte: Number(budgetAboveMatch[1]) };
+    } else if (budgetBetweenMatch) {
+      matchCriteria.budget = {
+        $gte: Number(budgetBetweenMatch[1]),
+        $lte: Number(budgetBetweenMatch[2]),
+      };
+    }
+
+    // --- Days Filters ---
+    if (daysMatch) {
+      matchCriteria.days = { $eq: Number(daysMatch[1]) };
+    } else if (daysAboveMatch) {
+      // Use capture group 2 for the number instead of group 1.
+      matchCriteria.days = { $gte: Number(daysAboveMatch[2]) };
+    } else if (daysUnderMatch) {
+      // Same here, use capture group 2.
+      matchCriteria.days = { $lte: Number(daysUnderMatch[2]) };
+    } else {
+      // Fallback: if no explicit days filter (with "for" or "more than"/"less than") is found,
+      // but a standalone occurrence of "<number> days" exists, use it.
+      const daysFallbackMatch = query?.match(/(\d+)\s*days/i);
+      if (daysFallbackMatch) {
+        matchCriteria.days = { $eq: Number(daysFallbackMatch[1]) };
+      }
+    }
+
+    // --- Remove Matched Filters from Query before Fuzzy Search ---
+    query = query
+      ?.replace(budgetMatch?.[0] || "", "")
+      .replace(budgetAboveMatch?.[0] || "", "")
+      .replace(budgetBetweenMatch?.[0] || "", "")
+      .replace(daysMatch?.[0] || "", "")
+      .replace(daysAboveMatch?.[0] || "", "")
+      .replace(daysUnderMatch?.[0] || "", "")
+      .replace(/(\d+\s*days)/i, "")  // Remove fallback days match if it exists
+      .trim();
+
+      console.log("criteria is: ", matchCriteria);
+
+    // --- Fetch Blogs with the constructed matchCriteria ---
+    let blogs = await BlogPost.find(matchCriteria)
+      .lean()
+      .populate("trip")
+      .populate("host", "name email photo")
+      .populate("ratings.user", "name email")
+      .sort({ createdAt: -1 });
+
+    // --- If there is remaining search text, perform Fuzzy Search ---
     if (query) {
-      // Budget filters
-      const betweenBudget = query.match(/(between|bw|for)\s+(\d+)\s+(and|-|to)\s+(\d+)\s*(rs|rupees|budget|rps)?/i);
-      if (betweenBudget) {
-        matchCriteria.budget = { 
-          $gte: parseInt(betweenBudget[2]), 
-          $lte: parseInt(betweenBudget[4]) 
-        };
-      }
-
-      const underBudget = query.match(/(under|less than|below|undr|less)\s+(\d+)\s*(rs|rupees|budget|rps)?/i);
-      if (underBudget) {
-        matchCriteria.budget = { $lte: parseInt(underBudget[2]) };
-      }
-
-      const overBudget = query.match(/(over|above|more than)\s+(\d+)\s*(rs|rupees|budget)?/i);
-      if (overBudget) {
-        matchCriteria.budget = { $gte: parseInt(overBudget[2]) };
-      }
-
-      // Days filters - FIXED
-      const betweenDays = query.match(/(between|for)\s+(\d+)\s+(and|-|to)\s+(\d+)\s*(days|day)?/i);
-      if (betweenDays) {
-        matchCriteria.days = { 
-          $gte: parseInt(betweenDays[2]), 
-          $lte: parseInt(betweenDays[4]) 
-        };
-      } else {
-        // Only check these if no "between days" was found
-        
-        const exactDays = query.match(/(\d+)\s*(days|day)/i);
-        if (exactDays) {
-          // Fixed: Use the captured number group, not the whole match
-          matchCriteria.days = parseInt(exactDays[1]);
-        }
-
-        const underDays = query.match(/(under|less than|below|undr|less)\s+(\d+)\s*(days|day)/i);
-        if (underDays) {
-          matchCriteria.days = { $lte: parseInt(underDays[2]) };
-        }
-
-        const overDays = query.match(/(over|above|more than)\s+(\d+)\s*(days|day)/i);
-        if (overDays) {
-          matchCriteria.days = { $gte: parseInt(overDays[2]) };
-        }
-      }
-    }
-
-    // Create text search condition if query exists and doesn't only contain filter terms
-    const textSearch = query && !Object.keys(matchCriteria).some(key => key !== 'tags');
-    
-    // Determine if we need special text search
-    let blogs;
-    
-    if (textSearch) {
-      blogs = await BlogPost.find(matchCriteria)
-        .lean()
-        .populate("trip")
-        .populate("host", "name email photo")
-        .populate("ratings.user", "name email");
-
+      const Fuse = require("fuse.js");
       const fuse = new Fuse(blogs, {
         keys: [
           { name: "title", weight: 0.9 },
-          { name: "summary", weight: 0.7, getFn: (obj) => obj.summary || "" },
-          { name: "description", weight: 0.6, getFn: (obj) => obj.description || "" },
-          { name: "advisory", weight: 0.4, getFn: (obj) => obj.advisory || "" },
-          { name: "tags", weight: 0.5, getFn: (obj) => Array.isArray(obj.tags) ? obj.tags.join(" ") : "" },
-          { name: "host.name", weight: 0.6, getFn: (obj) => obj.host?.name || "" },
+          { name: "summary", weight: 0.7, getFn: obj => obj.summary || "" },
+          { name: "description", weight: 0.6, getFn: obj => obj.description || "" },
+          { name: "advisory", weight: 0.4, getFn: obj => obj.advisory || "" },
+          { name: "tags", weight: 0.5, getFn: obj => Array.isArray(obj.tags) ? obj.tags.join(" ") : "" },
+          { name: "host.name", weight: 0.6, getFn: obj => obj.host?.name || "" },
         ],
         threshold: 0.3,
         includeScore: true,
         ignoreLocation: false,
       });
 
-      // Extract just the search terms (remove filter commands)
-      let searchText = query;
-      const filterPatterns = [
-        /(between|bw|for)\s+(\d+)\s+(and|-|to)\s+(\d+)\s*(rs|rupees|budget)?/i,
-        /(under|less than|below|undr)\s+(\d+)\s*(rs|rupees|budget)?/i,
-        /(over|above|more than|more)\s+(\d+)\s*(rs|rupees|budget)?/i,
-        /(between|bw|for)\s+(\d+)\s+(and|-|to)\s+(\d+)\s*(days|day)?/i,
-        /(\d+)\s*(days|day)/i,
-        /(under|less than|below|undr)\s+(\d+)\s*(days|day)/i,
-        /(over|above|more than|more)\s+(\d+)\s*(days|day)/i
-      ];
-      
-      filterPatterns.forEach(pattern => {
-        searchText = searchText.replace(pattern, '');
-      });
-      
-      searchText = searchText.trim();
-      
-      if (searchText) {
-        const fuseResults = fuse.search(searchText);
-        blogs = fuseResults.map((result) => result.item);
-      }
-    } else {
-      blogs = await BlogPost.find(matchCriteria)
-        .lean()
-        .populate("trip")
-        .populate("host", "name email photo")
-        .populate("ratings.user", "name email");
+      const fuseResults = fuse.search(query);
+      fuseResults.sort((a, b) => a.score - b.score);
+      blogs = fuseResults.map(result => result.item);
     }
 
     res.json(blogs);
   } catch (err) {
-    console.error("Error searching blogs:", err);
-    res.status(500).json({ error: "Failed to search blogs" });
+    res.status(500).json({ error: err.message });
   }
 };
+
 
 //GET /api/blogs/host/[userId]
 exports.getBlogsByHost = async (req, res) => {
@@ -499,3 +479,59 @@ exports.getTrendingBlogs = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+//temp code for search(in case)
+// GET /api/blogs/search?query=...&tags=...&budgmetMin=...&budgetMax=...&days=..
+// exports.searchBlogs = async (req, res) => {
+//   try {
+//     const { query, tags, days, budgetMin, budgetMax } = req.query;
+//     let matchCriteria = {};
+
+//     if (tags) {
+//       matchCriteria.tags = { $in: tags.split(",").map(tag => tag.trim()) };
+//     }
+
+//     if (days) {
+//       matchCriteria.days = { $in: days };
+//     }
+
+//     if (budgetMin || budgetMax) {
+//       matchCriteria.budget = {};
+//       if (budgetMin) matchCriteria.budget.$gte = Number(budgetMin);
+//       if (budgetMax) matchCriteria.budget.$lte = Number(budgetMax);
+//     }
+
+//     let blogs = await BlogPost.find(matchCriteria)
+//       .lean()
+//       .populate("trip")
+//       .populate("host", "name email photo")
+//       .populate("ratings.user", "name email")
+//       .sort({ createdAt: -1 });
+
+//     // Fuzzy search
+//     if (query) {
+//       const Fuse = require("fuse.js");
+//       const fuse = new Fuse(blogs, {
+//         keys: [
+//           { name: "title", weight: 0.9 },
+//           { name: "summary", weight: 0.7, getFn: obj => obj.summary || "" },
+//           { name: "description", weight: 0.6, getFn: obj => obj.description || "" },
+//           { name: "advisory", weight: 0.4, getFn: obj => obj.advisory || "" },
+//           { name: "tags", weight: 0.5, getFn: obj => Array.isArray(obj.tags) ? obj.tags.join(" ") : "" },
+//           { name: "host.name", weight: 0.6, getFn: obj => obj.host?.name || "" },
+//         ],
+//         threshold: 0.3,
+//         includeScore: true,
+//         ignoreLocation: false,
+//       });
+
+//       const fuseResults = fuse.search(query);
+//       fuseResults.sort((a, b) => a.score - b.score);
+//       blogs = fuseResults.map(result => result.item);
+//     }
+
+//     res.json(blogs);
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// };
