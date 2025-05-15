@@ -22,8 +22,8 @@ Before starting, make sure you have these installed:
 ### 1. **Clone the Backend Repository**
 
 ```bash
-git clone https://github.com/Divyanshverma1000/wander-backend.git
-cd wander-backend
+git clone https://github.com/Divyanshverma1000/safarnama-backend.git
+cd safarnama-backend
 ```
 
 ### 2. **Environment Configuration**
@@ -91,14 +91,14 @@ pm2 -v
 
 #### 5. Clone Your Repo & Install
 ```bash
-git clone https://github.com/Divyanshverma1000/wander-backend.git
-cd wander-backend
+git clone https://github.com/Divyanshverma1000/safarnama-backend.git
+cd safarnama-backend
 npm install
 ```
 
 #### 6. Run Backend with pm2
 ```bash
-pm2 start server.js --name wander-backend
+pm2 start server.js --name safarnama-backend
 pm2 startup
 # Follow instructions and run the printed command
 pm2 save
@@ -137,8 +137,8 @@ export const API_BASE_URL = "https://your-backend-production-url";
 ### 1. **Clone the Frontend Repository**
 
 ```bash
-git clone https://github.com/Divyanshverma1000/Trip-App.git
-cd Trip-App
+git clone https://github.com/Divyanshverma1000/DEP25-G18-Safarnama.git
+cd DEP25-G18-Safarnama
 ```
 
 ### 2. **Login to EAS (Expo Application Services)**
