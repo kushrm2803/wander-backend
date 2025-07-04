@@ -24,7 +24,7 @@ jobs:
       - name: Deploy to GCE VM
         env:
           GCE_SSH_PRIVATE_KEY: ${{ secrets.GCE_SSH_PRIVATE_KEY }}
-          GCE_HOST: 34.47.132.98
+          GCE_HOST: 34.93.3.10
           GCE_USERNAME: divyanshverma05440
         run: |
           echo "$GCE_SSH_PRIVATE_KEY" > gce_key
